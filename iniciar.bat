@@ -6,7 +6,8 @@ echo  🍳 Recipe Planner — A iniciar o servidor e a abrir o navegador...
 echo ================================================================
 echo.
 echo Se o navegador nao abrir automaticamente, aceda a:
-echo http://localhost:8000
+echo No computador: http://localhost:8000
+echo No telemovel (mesmo Wi-Fi): veja o IP indicado abaixo
 echo.
 echo Para fechar a aplicacao, feche esta janela.
 echo ================================================================

@@ -344,6 +344,20 @@ class RecipeHandler(BaseHTTPRequestHandler):
         self.responder_erro("Endpoint não encontrado", 404)
 
 
+def obter_ip_local() -> str:
+    """Obtém o endereço IP local na rede Wi-Fi/Ethernet."""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('10.255.255.255', 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
+
 def iniciar_servidor(porta: int = 8000, abrir_browser: bool = True):
     """Inicia o servidor HTTP local."""
     endereco = ("", porta)
@@ -361,10 +375,15 @@ def iniciar_servidor(porta: int = 8000, abrir_browser: bool = True):
         print(f"❌ Não foi possível iniciar o servidor nas portas {porta}-{porta+9}.")
         sys.exit(1)
 
-    url = f"http://localhost:{porta}"
+    url_local = f"http://localhost:{porta}"
+    ip_rede = obter_ip_local()
+    url_rede = f"http://{ip_rede}:{porta}"
+
     print(f"\n=======================================================")
     print(f"🚀 Servidor Web do Recipe-Planner ativo!")
-    print(f"🌐 Abra no seu navegador: {url}")
+    print(f"💻 No seu computador: {url_local}")
+    if ip_rede != "127.0.0.1":
+        print(f"📱 No seu telemóvel (no mesmo Wi-Fi): {url_rede}")
     print(f"=======================================================")
     print(f"Pressione Ctrl+C para encerrar o servidor.\n")
 
