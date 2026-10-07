@@ -7,12 +7,15 @@ Este repositório é um **Guia de Receitas e Planeador de Lista de Compras**.
 - Utilize terminologia comum em Portugal (ex.: *lacticínios*, *pequeno-almoço*, *refeições*, *almoço*, *jantar*, *frutas e legumes*, *talho*, *azeite*, *especiarias*).
 
 ## 📁 Estrutura do Repositório
+- `web/`: Interface gráfica de utilizador no navegador (HTML, CSS, JS).
+- `app.py`: Servidor Web local (standard library, zero dependências extras).
+- `iniciar.bat`: Atalho de arranque com duplo clique para abrir a aplicação e o navegador.
 - `recipes/`: Contém ficheiros `.txt` individuais de receitas do dia-a-dia.
 - `recipes/_modelo.txt`: Ficheiro de modelo padrão para novas receitas.
 - `src/recipe_parser.py`: Leitor e analisador de receitas e ingredientes.
 - `src/planner.py`: Motor de planeamento, cálculo de refeições, escala de doses e substituição de pratos.
 - `src/shopping_list.py`: Consolidação de ingredientes e geração da lista de compras categorizada.
-- `planner.py`: Interface de linha de comandos (CLI).
+- `planner.py`: Interface alternativa de linha de comandos (CLI).
 - `.plano_atual.json`: Ficheiro de estado que guarda o plano de refeições e escolhas ativas.
 
 ## 📝 Formato das Receitas (`recipes/*.txt`)

@@ -23,6 +23,38 @@ Sistema modular em **Python** (utilizando apenas a biblioteca padrão, sem depen
 
 ---
 
+## 🖥️ Como Utilizar a Interface Gráfica (Sem Terminal)
+
+Esta é a forma mais simples e intuitiva de usar o planeador sem tocar no terminal!
+
+### 🖱️ No Windows (1 clique duplo):
+1. Dê um **duplo clique no ficheiro `iniciar.bat`**.
+2. O servidor arranca e abre automaticamente a aplicação no seu navegador predefinido: **`http://localhost:8000`**.
+
+### 💻 Ou através do comando:
+```bash
+python app.py
+```
+
+### O que pode fazer na Interface Web:
+- **🗓️ Separador "Planeador"**:
+  - Escolha o número de dias (com botões rápidos para *1 Semana*, *2 Dias*, *3 Dias*, etc.) e pessoas.
+  - Clique em **"✨ Gerar Plano Completo"** para baralhar e preencher automaticamente a ementa.
+  - Selecione receitas específicas e ajuste quantas refeições cobrem (com multiplicação automática de doses).
+  - Troque qualquer refeição com o botão **"🔄 Trocar"** num simples menu visual.
+- **🛒 Separador "Lista de Compras"**:
+  - Veja todos os ingredientes somados e organizados por corredor (*Frutas e Legumes, Talho, Peixaria, Lacticínios, Mercearia, etc.*).
+  - Caixas de verificação (*checkboxes*) para riscar itens à medida que os coloca no carrinho de compras.
+  - Botão **"📋 Copiar para Notas / WhatsApp"** para levar a lista no telemóvel.
+  - Botão **"💾 Descarregar Markdown"**.
+- **📖 Separador "Livro de Receitas"**:
+  - Pesquise e filtre por categorias (*Almoço, Jantar, Rápido, Saudável, Peixe, Carne*).
+  - Consulte o modo de preparação e ingredientes completos.
+- **➕ Separador "Nova Receita"**:
+  - Adicione novas receitas através de um formulário visual, gravando automaticamente o ficheiro `.txt` padronizado.
+
+---
+
 ## 📁 Estrutura do Repositório
 
 ```text
@@ -37,19 +69,25 @@ Recipe-Planner/
 │   ├── salada_mediterranica_com_frango.txt
 │   ├── salmao_grelhado_com_legumes.txt
 │   └── sopa_rica_de_legumes.txt
+├── web/                                # Interface Web Gráfica (HTML/CSS/JS)
+│   ├── index.html                      # Aplicação visual de página única
+│   ├── style.css                       # Estilos modernos e responsivos
+│   └── app.js                          # Lógica interativa da interface
 ├── src/                                # Motor da aplicação em Python
 │   ├── recipe_parser.py                # Analisador de ficheiros .txt e ingredientes
 │   ├── planner.py                      # Planeador de refeições e cálculo de doses
 │   └── shopping_list.py                # Agregador e gerador da lista de compras
 ├── tests/                              # Testes unitários (unittest)
-├── planner.py                          # Interface de linha de comandos (CLI)
+├── app.py                              # Servidor Web local (standard library)
+├── iniciar.bat                         # Atalho de arranque com 1 clique (Windows)
+├── planner.py                          # Interface alternativa de linha de comandos (CLI)
 ├── .github/copilot-instructions.md     # Instruções de contexto para o Copilot
 └── README.md                           # Documentação do projeto
 ```
 
 ---
 
-## 🚀 Como Utilizar a Linha de Comandos (CLI)
+## 🚀 Como Utilizar a Linha de Comandos (CLI) (Opcional)
 
 Não são necessárias quaisquer instalações de pacotes (`pip`). Apenas necessita de Python 3.8+.
 

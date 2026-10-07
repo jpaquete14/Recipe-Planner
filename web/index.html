@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipe Planner — Guia de Receitas & Lista de Compras</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Barra de Navegação Superior -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <span class="brand-icon">🍳</span>
+        <div>
+          <h1 class="brand-title">Recipe Planner</h1>
+          <p class="brand-subtitle">Planeador de Refeições & Lista de Compras</p>
+        </div>
+      </div>
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="tab-planeador">
+          <span>🗓️</span> Planeador
+        </button>
+        <button class="tab-btn" data-tab="tab-compras">
+          <span>🛒</span> Lista de Compras
+        </button>
+        <button class="tab-btn" data-tab="tab-receitas">
+          <span>📖</span> Livro de Receitas
+        </button>
+        <button class="tab-btn btn-highlight" data-tab="tab-nova-receita">
+          <span>➕</span> Nova Receita
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Notificação Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-container">
+
+    <!-- SEPARADOR 1: PLANEADOR DE REFEIÇÕES -->
+    <section id="tab-planeador" class="tab-content active">
+      <div class="panel-header">
+        <div>
+          <h2>🗓️ Planeamento de Refeições</h2>
+          <p class="text-muted">Configure o período e as pessoas para gerar ou personalizar a sua ementa.</p>
+        </div>
+      </div>
+
+      <!-- Controlos de Configuração -->
+      <div class="card config-card">
+        <div class="config-grid">
+          
+          <div class="config-group">
+            <label class="config-label">Duração</label>
+            <div class="btn-group-toggle" id="dias-presets">
+              <button type="button" class="btn-toggle active" data-dias="7">1 Semana (7 dias)</button>
+              <button type="button" class="btn-toggle" data-dias="2">2 Dias</button>
+              <button type="button" class="btn-toggle" data-dias="3">3 Dias</button>
+              <button type="button" class="btn-toggle" data-dias="5">5 Dias</button>
+            </div>
+            <div class="input-inline-custom">
+              <span>Personalizado:</span>
+              <input type="number" id="input-dias" min="1" max="30" value="7" class="input-num">
+              <span>dias</span>
+            </div>
+          </div>
+
+          <div class="config-group">
+            <label class="config-label">Pessoas</label>
+            <div class="counter-box">
+              <button type="button" class="btn-counter" id="btn-menos-pessoas">-</button>
+              <span id="label-pessoas" class="counter-value">2</span>
+              <button type="button" class="btn-counter" id="btn-mais-pessoas">+</button>
+              <span class="text-muted ml-2">pessoas</span>
+            </div>
+          </div>
+
+          <div class="config-group">
+            <label class="config-label">Refeições por dia</label>
+            <select id="select-refeicoes-dia" class="select-field">
+              <option value="2" selected>2 refeições (Almoço + Jantar)</option>
+              <option value="1">1 refeição (Apenas Almoço ou Jantar)</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div class="summary-bar">
+          <div class="summary-info">
+            <span class="badge badge-primary" id="badge-total-refeicoes">Total: 14 refeições</span>
+            <span class="text-muted ml-2" id="badge-resumo-calculo">(7 dias × 2 refeições × 2 pessoas = 28 doses totais)</span>
+          </div>
+          <div class="summary-actions">
+            <button id="btn-gerar-aleatorio" class="btn btn-success">
+              <span>✨</span> Gerar Plano Completo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secção de Escolha Manual Opcional -->
+      <div class="card mb-4">
+        <div class="collapsible-header" id="toggle-escolhas-manuais">
+          <h3>🎯 Selecionar Receitas Específicas (Opcional)</h3>
+          <span class="toggle-icon">▼</span>
+        </div>
+        <div id="bloco-escolhas-manuais" class="collapsible-content">
+          <p class="text-muted mb-3">Escolha receitas específicas e quantas refeições cobrem (ex.: se selecionar 1 prato para cobrir 4 refeições de 2 dias, as doses são duplicadas automaticamente):</p>
+          <div id="lista-selecao-manual" class="manual-pick-grid">
+            <!-- Gerado via JavaScript -->
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button id="btn-aplicar-escolhas" class="btn btn-primary">
+              <span>⚡</span> Aplicar Seleção e Preencher Restantes
+            </button>
+            <button id="btn-apenas-selecionadas" class="btn btn-secondary">
+              <span>🔒</span> Usar Apenas as Selecionadas
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ementa Atual Selecionada -->
+      <div class="card">
+        <div class="card-title-bar">
+          <h3>🍽️ Ementa Ativa</h3>
+          <button id="btn-ir-compras" class="btn btn-outline">
+            Ver Lista de Compras ➔
+          </button>
+        </div>
+        <div id="empty-plano" class="empty-state">
+          <span class="empty-icon">🥘</span>
+          <p>Ainda não gerou nenhum plano de refeições.</p>
+          <button class="btn btn-primary mt-3" onclick="document.getElementById('btn-gerar-aleatorio').click()">
+            Gerar Plano Agora
+          </button>
+        </div>
+        <div id="grid-plano" class="plano-grid hidden">
+          <!-- Cartões das receitas do plano injetados por JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SEPARADOR 2: LISTA DE COMPRAS -->
+    <section id="tab-compras" class="tab-content">
+      <div class="panel-header">
+        <div>
+          <h2>🛒 Lista de Compras Consolidada</h2>
+          <p class="text-muted">Ingredientes somados e organizados pelas secções do supermercado.</p>
+        </div>
+        <div class="header-actions">
+          <button id="btn-copiar-compras" class="btn btn-secondary">
+            <span>📋</span> Copiar para Notas / WhatsApp
+          </button>
+          <button id="btn-descarregar-compras" class="btn btn-outline">
+            <span>💾</span> Descarregar Markdown (.md)
+          </button>
+        </div>
+      </div>
+
+      <div id="compras-resumo-card" class="card mb-4 hidden">
+        <div class="plan-meta-summary">
+          <div>
+            <strong>Duração:</strong> <span id="meta-dias">-</span> dias
+          </div>
+          <div>
+            <strong>Pessoas:</strong> <span id="meta-pessoas">-</span>
+          </div>
+          <div>
+            <strong>Total de Refeições:</strong> <span id="meta-refeicoes">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="empty-compras" class="empty-state">
+        <span class="empty-icon">🛒</span>
+        <p>Gere um plano de refeições no separador "Planeador" para visualizar a sua lista de compras.</p>
+      </div>
+
+      <div id="container-compras" class="compras-sections-container hidden">
+        <!-- Secções de corredores geradas por JS -->
+      </div>
+    </section>
+
+    <!-- SEPARADOR 3: LIVRO DE RECEITAS -->
+    <section id="tab-receitas" class="tab-content">
+      <div class="panel-header">
+        <div>
+          <h2>📖 Livro de Receitas</h2>
+          <p class="text-muted">Receitas do dia-a-dia disponíveis na pasta <code>recipes/</code>.</p>
+        </div>
+        <div class="search-box">
+          <input type="text" id="filtro-pesquisa" placeholder="🔍 Pesquisar receita ou ingrediente..." class="input-search">
+        </div>
+      </div>
+
+      <div class="category-pills" id="filtro-categorias">
+        <button class="pill active" data-cat="">Todas</button>
+        <button class="pill" data-cat="Almoço">Almoço</button>
+        <button class="pill" data-cat="Jantar">Jantar</button>
+        <button class="pill" data-cat="Rápido">Rápido</button>
+        <button class="pill" data-cat="Saudável">Saudável</button>
+        <button class="pill" data-cat="Peixaria">Peixe</button>
+        <button class="pill" data-cat="Talho">Carne</button>
+      </div>
+
+      <div id="grid-catalogo" class="recipes-grid">
+        <!-- Cartões de receitas carregados por JS -->
+      </div>
+    </section>
+
+    <!-- SEPARADOR 4: NOVA RECEITA -->
+    <section id="tab-nova-receita" class="tab-content">
+      <div class="panel-header">
+        <div>
+          <h2>➕ Adicionar Nova Receita</h2>
+          <p class="text-muted">Crie uma nova receita visualmente. Esta será guardada como ficheiro <code>.txt</code> compatível.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <form id="form-nova-receita">
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="rec-titulo">Título da Receita *</label>
+              <input type="text" id="rec-titulo" required placeholder="Ex.: Bife de Peru com Arroz de Cenoura" class="form-input">
+            </div>
+            <div class="form-group flex-1">
+              <label for="rec-doses">Doses Base *</label>
+              <input type="number" id="rec-doses" min="1" max="20" value="4" required class="form-input">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="rec-prep">Tempo de Preparação</label>
+              <input type="text" id="rec-prep" placeholder="Ex.: 15 min" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="rec-coz">Tempo de Cozedura</label>
+              <input type="text" id="rec-coz" placeholder="Ex.: 20 min" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="rec-dificuldade">Dificuldade</label>
+              <select id="rec-dificuldade" class="form-input">
+                <option value="Muito Fácil">Muito Fácil</option>
+                <option value="Fácil" selected>Fácil</option>
+                <option value="Médio">Médio</option>
+                <option value="Avançado">Avançado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rec-categoria">Categorias (separadas por vírgula)</label>
+              <input type="text" id="rec-categoria" placeholder="Ex.: Almoço, Jantar, Rápido" class="form-input">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="rec-ingredientes">
+              Ingredientes * <small class="text-muted">(um por linha; adicione o corredor entre parêntesis retos como [Talho], [Frutas e Legumes], [Mercearia])</small>
+            </label>
+            <textarea id="rec-ingredientes" rows="6" required class="form-textarea" placeholder="- 500 g de peito de peru [Talho]&#10;- 1 unidade de cebola média [Frutas e Legumes]&#10;- 2 dentes de alho [Frutas e Legumes]&#10;- 250 g de arroz agulha [Mercearia]&#10;- 2 c. de sopa de azeite [Azeites e Óleos]&#10;- 1 c. de chá de sal [Especiarias e Temperos]"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="rec-instrucoes">Modo de Preparação / Instruções * <small class="text-muted">(um passo por linha)</small></label>
+            <textarea id="rec-instrucoes" rows="5" required class="form-textarea" placeholder="1. Picar a cebola e o alho e refogar no azeite.&#10;2. Adicionar o peru em cubos e dourar.&#10;3. Juntar o arroz e a água a ferver com sal e cozer durante 15 minutos."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="rec-notas">Notas / Dicas <small class="text-muted">(opcional)</small></label>
+            <textarea id="rec-notas" rows="2" class="form-textarea" placeholder="- Pode substituir peru por frango ou tofu."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-success btn-lg">
+              <span>💾</span> Gravar Receita
+            </button>
+            <button type="reset" class="btn btn-secondary">
+              Limpar Campos
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: DETALHES DA RECEITA -->
+  <div id="modal-receita" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-rec-titulo">Detalhes da Receita</h3>
+        <button class="modal-close" onclick="fecharModalReceita()">✕</button>
+      </div>
+      <div class="modal-body" id="modal-rec-corpo">
+        <!-- Conteúdo injetado por JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="fecharModalReceita()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TROCAR REFEIÇÃO -->
+  <div id="modal-trocar" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>🔄 Substituir Refeição</h3>
+        <button class="modal-close" onclick="fecharModalTrocar()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Substituir <strong id="modal-trocar-origem"></strong> por:</p>
+        <div class="form-group mt-3">
+          <label for="select-nova-receita">Escolha a nova receita:</label>
+          <select id="select-nova-receita" class="select-field">
+            <!-- Opções injetadas por JS -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="fecharModalTrocar()">Cancelar</button>
+        <button id="btn-confirmar-troca" class="btn btn-primary">Confirmar Troca</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
