@@ -1,0 +1,28 @@
+# Modelo Padrão de Receita
+# Preencha os campos abaixo mantendo esta estrutura para cada nova receita.
+# As secções de ingredientes podem ter a categoria entre parêntesis retos no final da linha:
+# Categorias recomendadas: [Talho], [Peixaria], [Frutas e Legumes], [Lacticínios], [Mercearia], [Padaria], [Congelados], [Especiarias e Temperos], [Azeites e Óleos]
+
+Título: Nome da Receita
+Doses: 4
+Tempo de Preparação: 15 min
+Tempo de Cozedura: 30 min
+Categoria: Almoço, Jantar
+Dificuldade: Fácil
+
+Ingredientes:
+- 500 g de carne ou peixe [Talho]
+- 1 unidade de cebola média, picada [Frutas e Legumes]
+- 2 dentes de alho, picados [Frutas e Legumes]
+- 2 c. de sopa de azeite [Azeites e Óleos]
+- 1 c. de chá de sal [Especiarias e Temperos]
+- 200 ml de água ou caldo [Mercearia]
+
+Instruções:
+1. Preparar os ingredientes e aquecer o azeite numa panela ou frigideira.
+2. Refogar a cebola e o alho até ficarem translúcidos.
+3. Adicionar a proteína e dourar uniformemente.
+4. Juntar os restantes ingredientes e deixar cozinhar em lume brando até estar pronto.
+
+Notas:
+- Dicas ou sugestões de acompanhamento ou substituições de ingredientes.

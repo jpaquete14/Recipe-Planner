@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.plano_atual.json
+*.json
+!recipes/*.json
+.pytest_cache/
