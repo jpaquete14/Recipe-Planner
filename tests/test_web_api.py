@@ -91,6 +91,156 @@ class TestWebApi(unittest.TestCase):
         self.assertTrue(data_troca.get("sucesso"))
         self.assertEqual(data_troca["plano"]["itens"][0]["receita_id"], "frango_com_caril")
 
+    def test_criar_e_editar_receita(self):
+        from pathlib import Path
+        pasta_rec = Path(__file__).parent.parent / "recipes"
+
+        # 1. Criar receita de teste
+        payload_nova = json.dumps({
+            "titulo": "Omolete Especial de Ervas",
+            "doses": 2,
+            "tempo_preparacao": "5 min",
+            "tempo_cozedura": "5 min",
+            "categoria": "Rápido, Ovos",
+            "dificuldade": "Muito Fácil",
+            "ingredientes": "- 4 unidades de ovos [Lacticínios e Ovos]\n- 1 c. de sopa de azeite [Azeites e Óleos]",
+            "instrucoes": "1. Bater os ovos.\n2. Cozinhar na frigideira com azeite.",
+            "notas": "- Servir quente."
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            f"{self.base_url}/api/receitas",
+            data=payload_nova,
+            headers={"Content-Type": "application/json"}
+        )
+        res = urllib.request.urlopen(req)
+        self.assertEqual(res.status, 200)
+        data = json.loads(res.read().decode("utf-8"))
+        self.assertTrue(data.get("sucesso"))
+        rec_id = data.get("id")
+        ficheiro_criado = pasta_rec / f"{rec_id}.txt"
+
+        try:
+            # 2. Obter detalhes e verificar campos brutos
+            req_get = urllib.request.urlopen(f"{self.base_url}/api/receitas/{rec_id}")
+            self.assertEqual(req_get.status, 200)
+            data_get = json.loads(req_get.read().decode("utf-8"))
+            self.assertTrue(data_get.get("sucesso"))
+            rec = data_get.get("receita")
+            self.assertEqual(rec["doses"], 2)
+            self.assertIn("ovos", rec["ingredientes_bruto"].lower())
+
+            # 3. Editar receita via PUT (aumentar para 4 doses e mudar título)
+            payload_edit = json.dumps({
+                "titulo": "Omolete Especial de Queijo e Ervas",
+                "doses": 4,
+                "tempo_preparacao": "10 min",
+                "tempo_cozedura": "8 min",
+                "categoria": "Rápido, Ovos",
+                "dificuldade": "Fácil",
+                "ingredientes": "- 6 unidades de ovos [Lacticínios e Ovos]\n- 50 g de queijo ralado [Lacticínios e Ovos]\n- 1 c. de sopa de azeite [Azeites e Óleos]",
+                "instrucoes": "1. Bater os ovos com o queijo.\n2. Cozinhar na frigideira com azeite.",
+                "notas": "- Pode juntar orégãos."
+            }).encode("utf-8")
+
+            req_put = urllib.request.Request(
+                f"{self.base_url}/api/receitas/{rec_id}",
+                data=payload_edit,
+                headers={"Content-Type": "application/json"},
+                method="PUT"
+            )
+            res_put = urllib.request.urlopen(req_put)
+            self.assertEqual(res_put.status, 200)
+            data_put = json.loads(res_put.read().decode("utf-8"))
+            self.assertTrue(data_put.get("sucesso"))
+
+            novo_id = data_put.get("id")
+            ficheiro_atualizado = pasta_rec / f"{novo_id}.txt"
+
+            # 4. Verificar se a receita foi atualizada
+            req_get_edit = urllib.request.urlopen(f"{self.base_url}/api/receitas/{novo_id}")
+            self.assertEqual(req_get_edit.status, 200)
+            data_get_edit = json.loads(req_get_edit.read().decode("utf-8"))
+            rec_editada = data_get_edit.get("receita")
+            self.assertEqual(rec_editada["titulo"], "Omolete Especial de Queijo e Ervas")
+            self.assertEqual(rec_editada["doses"], 4)
+            self.assertIn("queijo", rec_editada["ingredientes_bruto"].lower())
+
+        finally:
+            # Limpeza do ficheiro de teste
+            if ficheiro_criado.exists():
+                ficheiro_criado.unlink()
+            ficheiro_atualizado = pasta_rec / "omolete_especial_de_queijo_e_ervas.txt"
+            if ficheiro_atualizado.exists():
+                ficheiro_atualizado.unlink()
+
+    def test_editar_receita_atualiza_plano_ativo(self):
+        from pathlib import Path
+        pasta_rec = Path(__file__).parent.parent / "recipes"
+
+        # 1. Criar receita temporária
+        payload_nova = json.dumps({
+            "titulo": "Sopa de Legumes da Aldeia",
+            "doses": 4,
+            "tempo_preparacao": "10 min",
+            "tempo_cozedura": "25 min",
+            "categoria": "Sopas, Saudável",
+            "dificuldade": "Fácil",
+            "ingredientes": "- 400 g de abóbora [Frutas e Legumes]\n- 1 unidade de cebola média [Frutas e Legumes]",
+            "instrucoes": "1. Cozer legumes e triturar.",
+            "notas": ""
+        }).encode("utf-8")
+
+        req = urllib.request.Request(f"{self.base_url}/api/receitas", data=payload_nova, headers={"Content-Type": "application/json"})
+        res = urllib.request.urlopen(req)
+        data = json.loads(res.read().decode("utf-8"))
+        rec_id = data.get("id")
+
+        try:
+            # 2. Criar plano usando esta receita
+            payload_plano = json.dumps({
+                "dias": 2,
+                "pessoas": 2,
+                "refeicoes_dia": 1,
+                "escolhas": [{"receita_id": rec_id, "refeicoes": 2}],
+                "preencher_aleatorio": False
+            }).encode("utf-8")
+
+            req_p = urllib.request.Request(f"{self.base_url}/api/planear", data=payload_plano, headers={"Content-Type": "application/json"})
+            res_p = urllib.request.urlopen(req_p)
+            data_p = json.loads(res_p.read().decode("utf-8"))
+            # 2 pessoas * 2 refeições = 4 doses necessárias. Doses base: 4 -> fator escala: 1.0
+            self.assertEqual(data_p["plano"]["itens"][0]["fator_escala"], 1.0)
+
+            # 3. Editar a receita, alterando doses_base para 2 (duplica o fator de escala no plano para 2.0)
+            payload_edit = json.dumps({
+                "titulo": "Sopa de Legumes da Aldeia",
+                "doses": 2,
+                "tempo_preparacao": "10 min",
+                "tempo_cozedura": "25 min",
+                "categoria": "Sopas, Saudável",
+                "dificuldade": "Fácil",
+                "ingredientes": "- 400 g de abóbora [Frutas e Legumes]\n- 1 unidade de cebola média [Frutas e Legumes]",
+                "instrucoes": "1. Cozer legumes e triturar.",
+                "notas": ""
+            }).encode("utf-8")
+
+            req_edit = urllib.request.Request(f"{self.base_url}/api/receitas/{rec_id}", data=payload_edit, headers={"Content-Type": "application/json"}, method="PUT")
+            res_edit = urllib.request.urlopen(req_edit)
+            data_edit = json.loads(res_edit.read().decode("utf-8"))
+            self.assertTrue(data_edit["sucesso"])
+
+            # 4. Verificar se o endpoint GET /api/plano reflete a nova escala
+            req_plano_atual = urllib.request.urlopen(f"{self.base_url}/api/plano")
+            data_plano_atual = json.loads(req_plano_atual.read().decode("utf-8"))
+            self.assertEqual(data_plano_atual["plano"]["itens"][0]["doses_base"], 2)
+            self.assertEqual(data_plano_atual["plano"]["itens"][0]["fator_escala"], 2.0)
+
+        finally:
+            ficheiro = pasta_rec / f"{rec_id}.txt"
+            if ficheiro.exists():
+                ficheiro.unlink()
+
 
 if __name__ == "__main__":
     unittest.main()

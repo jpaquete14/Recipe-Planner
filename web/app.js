@@ -14,6 +14,7 @@ let config = {
 };
 
 let receitaParaTrocar = null;
+let receitaAtualVisualizada = null;
 
 // Elementos DOM
 const dom = {
@@ -51,6 +52,20 @@ const dom = {
   modalReceita: document.getElementById('modal-receita'),
   modalRecTitulo: document.getElementById('modal-rec-titulo'),
   modalRecCorpo: document.getElementById('modal-rec-corpo'),
+  modalEditar: document.getElementById('modal-editar'),
+  modalEditarTitulo: document.getElementById('modal-editar-titulo'),
+  formEditarReceita: document.getElementById('form-editar-receita'),
+  editRecId: document.getElementById('edit-rec-id'),
+  editRecTitulo: document.getElementById('edit-rec-titulo'),
+  editRecDoses: document.getElementById('edit-rec-doses'),
+  editRecPrep: document.getElementById('edit-rec-prep'),
+  editRecCoz: document.getElementById('edit-rec-coz'),
+  editRecDificuldade: document.getElementById('edit-rec-dificuldade'),
+  editRecCategoria: document.getElementById('edit-rec-categoria'),
+  editRecIngredientes: document.getElementById('edit-rec-ingredientes'),
+  editRecInstrucoes: document.getElementById('edit-rec-instrucoes'),
+  editRecNotas: document.getElementById('edit-rec-notas'),
+  btnSalvarEdicao: document.getElementById('btn-salvar-edicao'),
   modalTrocar: document.getElementById('modal-trocar'),
   modalTrocarOrigem: document.getElementById('modal-trocar-origem'),
   selectNovaReceita: document.getElementById('select-nova-receita'),
@@ -65,6 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   configurarNavegacao();
   configurarControlosPlaneamento();
   configurarFormularioNovaReceita();
+  configurarFormularioEditarReceita();
 
   await carregarCatalogo();
   await carregarPlanoAtual();
@@ -543,9 +559,12 @@ function renderizarCatalogo(receitas) {
           <span>🏷️ ${cats}</span>
         </div>
       </div>
-      <div>
-        <button class="btn btn-outline btn-sm w-full" onclick="verDetalhesReceita('${r.id}')">
-          Ver Receita Completa ➔
+      <div class="recipe-card-actions">
+        <button class="btn btn-outline btn-sm flex-1" onclick="verDetalhesReceita('${r.id}')">
+          👁️ Ver
+        </button>
+        <button class="btn btn-secondary btn-sm flex-1" onclick="abrirModalEditar('${r.id}')">
+          ✏️ Editar
         </button>
       </div>
     `;
@@ -577,6 +596,7 @@ window.verDetalhesReceita = async function(recId) {
       return;
     }
     const r = data.receita;
+    receitaAtualVisualizada = r.id;
     dom.modalRecTitulo.textContent = r.titulo;
 
     let html = `
@@ -618,6 +638,98 @@ window.verDetalhesReceita = async function(recId) {
 window.fecharModalReceita = function() {
   dom.modalReceita.classList.add('hidden');
 };
+
+window.editarReceitaAtual = function() {
+  if (receitaAtualVisualizada) {
+    const idParaEditar = receitaAtualVisualizada;
+    fecharModalReceita();
+    abrirModalEditar(idParaEditar);
+  }
+};
+
+// ==========================================
+// EDIÇÃO DE RECEITA (MODAL)
+// ==========================================
+window.abrirModalEditar = async function(recId) {
+  try {
+    const res = await fetch(`/api/receitas/${recId}`);
+    const data = await res.json();
+    if (!data.sucesso) {
+      mostrarToast('Erro ao carregar receita para edição.');
+      return;
+    }
+
+    const r = data.receita;
+    dom.editRecId.value = r.id;
+    dom.editRecTitulo.value = r.titulo;
+    dom.editRecDoses.value = r.doses;
+    dom.editRecPrep.value = r.tempo_preparacao || '';
+    dom.editRecCoz.value = r.tempo_cozedura || '';
+    dom.editRecDificuldade.value = r.dificuldade || 'Fácil';
+    dom.editRecCategoria.value = r.categoria_str || (Array.isArray(r.categoria) ? r.categoria.join(', ') : '');
+    dom.editRecIngredientes.value = r.ingredientes_bruto || '';
+    dom.editRecInstrucoes.value = r.instrucoes_bruto || '';
+    dom.editRecNotas.value = r.notas_bruto || '';
+
+    dom.modalEditarTitulo.textContent = `✏️ Editar Receita: ${r.titulo}`;
+    dom.modalEditar.classList.remove('hidden');
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Erro ao abrir editor de receita.');
+  }
+};
+
+window.fecharModalEditar = function() {
+  dom.modalEditar.classList.add('hidden');
+};
+
+function configurarFormularioEditarReceita() {
+  dom.formEditarReceita.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const recId = dom.editRecId.value;
+    if (!recId) return;
+
+    const payload = {
+      titulo: dom.editRecTitulo.value.trim(),
+      doses: parseInt(dom.editRecDoses.value, 10),
+      tempo_preparacao: dom.editRecPrep.value.trim(),
+      tempo_cozedura: dom.editRecCoz.value.trim(),
+      dificuldade: dom.editRecDificuldade.value,
+      categoria: dom.editRecCategoria.value.trim(),
+      ingredientes: dom.editRecIngredientes.value.trim(),
+      instrucoes: dom.editRecInstrucoes.value.trim(),
+      notas: dom.editRecNotas.value.trim()
+    };
+
+    try {
+      dom.btnSalvarEdicao.disabled = true;
+      dom.btnSalvarEdicao.innerHTML = '<span>⏳</span> A guardar...';
+
+      const res = await fetch(`/api/receitas/${recId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.sucesso) {
+        mostrarToast(`✅ ${data.mensagem}`);
+        fecharModalEditar();
+        await carregarCatalogo();
+        await carregarPlanoAtual();
+      } else {
+        mostrarToast(`❌ ${data.erro || 'Erro ao atualizar receita'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      mostrarToast('Erro de comunicação ao atualizar receita.');
+    } finally {
+      dom.btnSalvarEdicao.disabled = false;
+      dom.btnSalvarEdicao.innerHTML = '<span>💾</span> Guardar Alterações';
+    }
+  });
+}
 
 // ==========================================
 // FORMULÁRIO DE NOVA RECEITA

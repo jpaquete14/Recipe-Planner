@@ -50,6 +50,7 @@ python app.py
 - **📖 Separador "Livro de Receitas"**:
   - Pesquise e filtre por categorias (*Almoço, Jantar, Rápido, Saudável, Peixe, Carne*).
   - Consulte o modo de preparação e ingredientes completos.
+  - **✏️ Editar Receitas**: Altere qualquer receita existente (título, doses, tempos, ingredientes ou instruções) com 1 clique no botão "Editar" ou dentro da janela de detalhes.
 - **➕ Separador "Nova Receita"**:
   - Adicione novas receitas através de um formulário visual, gravando automaticamente o ficheiro `.txt` padronizado.
 

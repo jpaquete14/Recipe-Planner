@@ -669,6 +669,12 @@ body {
   color: var(--text-muted);
 }
 
+.recipe-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
 /* FORM */
 .form-card {
   max-width: 800px;
@@ -751,6 +757,10 @@ body {
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   animation: modalScale 0.2s ease-out;
+}
+
+.modal-dialog.modal-lg {
+  max-width: 760px;
 }
 
 @keyframes modalScale {

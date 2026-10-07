@@ -296,7 +296,7 @@
 
   <!-- MODAL: DETALHES DA RECEITA -->
   <div id="modal-receita" class="modal hidden">
-    <div class="modal-backdrop"></div>
+    <div class="modal-backdrop" onclick="fecharModalReceita()"></div>
     <div class="modal-dialog">
       <div class="modal-header">
         <h3 id="modal-rec-titulo">Detalhes da Receita</h3>
@@ -306,8 +306,85 @@
         <!-- Conteúdo injetado por JS -->
       </div>
       <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-modal-editar-detalhes" onclick="editarReceitaAtual()">
+          <span>✏️</span> Editar Receita
+        </button>
         <button class="btn btn-secondary" onclick="fecharModalReceita()">Fechar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR RECEITA -->
+  <div id="modal-editar" class="modal hidden">
+    <div class="modal-backdrop" onclick="fecharModalEditar()"></div>
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3 id="modal-editar-titulo">✏️ Editar Receita</h3>
+        <button class="modal-close" onclick="fecharModalEditar()">✕</button>
+      </div>
+      <form id="form-editar-receita">
+        <div class="modal-body">
+          <input type="hidden" id="edit-rec-id">
+
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="edit-rec-titulo">Título da Receita *</label>
+              <input type="text" id="edit-rec-titulo" required class="form-input">
+            </div>
+            <div class="form-group flex-1">
+              <label for="edit-rec-doses">Doses Base *</label>
+              <input type="number" id="edit-rec-doses" min="1" max="20" required class="form-input">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-rec-prep">Tempo de Preparação</label>
+              <input type="text" id="edit-rec-prep" class="form-input" placeholder="Ex.: 15 min">
+            </div>
+            <div class="form-group">
+              <label for="edit-rec-coz">Tempo de Cozedura</label>
+              <input type="text" id="edit-rec-coz" class="form-input" placeholder="Ex.: 20 min">
+            </div>
+            <div class="form-group">
+              <label for="edit-rec-dificuldade">Dificuldade</label>
+              <select id="edit-rec-dificuldade" class="form-input">
+                <option value="Muito Fácil">Muito Fácil</option>
+                <option value="Fácil">Fácil</option>
+                <option value="Médio">Médio</option>
+                <option value="Avançado">Avançado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit-rec-categoria">Categorias (separadas por vírgula)</label>
+              <input type="text" id="edit-rec-categoria" class="form-input" placeholder="Ex.: Almoço, Jantar, Rápido">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-rec-ingredientes">
+              Ingredientes * <small class="text-muted">(um por linha; adicione o corredor entre parêntesis retos como [Talho], [Frutas e Legumes], [Mercearia])</small>
+            </label>
+            <textarea id="edit-rec-ingredientes" rows="7" required class="form-textarea"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-rec-instrucoes">Modo de Preparação / Instruções * <small class="text-muted">(um passo por linha)</small></label>
+            <textarea id="edit-rec-instrucoes" rows="6" required class="form-textarea"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-rec-notas">Notas / Dicas <small class="text-muted">(opcional)</small></label>
+            <textarea id="edit-rec-notas" rows="2" class="form-textarea"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModalEditar()">Cancelar</button>
+          <button type="submit" class="btn btn-success" id="btn-salvar-edicao">
+            <span>💾</span> Guardar Alterações
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

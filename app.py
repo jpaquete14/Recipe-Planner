@@ -15,7 +15,7 @@ import urllib.parse
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.recipe_parser import carregar_todas_receitas, parse_receita_ficheiro, Receita
 from src.planner import (
@@ -37,6 +37,67 @@ def slugificar(texto: str) -> str:
     texto_norm = unicodedata.normalize("NFKD", texto).encode("ASCII", "ignore").decode("utf-8")
     slug = re.sub(r"[^\w\s-]", "", texto_norm).strip().lower()
     return re.sub(r"[-\s]+", "_", slug)
+
+
+def formatar_conteudo_receita(
+    titulo: str,
+    doses: int,
+    tempo_prep: str = "",
+    tempo_coz: str = "",
+    categoria: str = "",
+    dificuldade: str = "Fácil",
+    ingredientes_texto: str = "",
+    instrucoes_texto: str = "",
+    notas_texto: str = ""
+) -> str:
+    """Formata os campos da receita no formato padronizado de ficheiro .txt."""
+    linhas = []
+    linhas.append(f"Título: {titulo}")
+    linhas.append(f"Doses: {doses}")
+    if tempo_prep:
+        linhas.append(f"Tempo de Preparação: {tempo_prep}")
+    if tempo_coz:
+        linhas.append(f"Tempo de Cozedura: {tempo_coz}")
+    if categoria:
+        linhas.append(f"Categoria: {categoria}")
+    if dificuldade:
+        linhas.append(f"Dificuldade: {dificuldade}")
+    linhas.append("")
+
+    linhas.append("Ingredientes:")
+    for ing in ingredientes_texto.split("\n"):
+        ing_limpo = ing.strip()
+        if not ing_limpo:
+            continue
+        if not ing_limpo.startswith(("-", "*", "•")):
+            ing_limpo = f"- {ing_limpo}"
+        linhas.append(ing_limpo)
+    linhas.append("")
+
+    linhas.append("Instruções:")
+    idx = 1
+    for inst in instrucoes_texto.split("\n"):
+        inst_limpa = inst.strip()
+        if not inst_limpa:
+            continue
+        if not re.match(r"^\d+\.", inst_limpa):
+            inst_limpa = f"{idx}. {inst_limpa}"
+            idx += 1
+        linhas.append(inst_limpa)
+    linhas.append("")
+
+    if notas_texto:
+        linhas.append("Notas:")
+        for n in notas_texto.split("\n"):
+            n_limpa = n.strip()
+            if not n_limpa:
+                continue
+            if not n_limpa.startswith(("-", "*", "•")):
+                n_limpa = f"- {n_limpa}"
+            linhas.append(n_limpa)
+        linhas.append("")
+
+    return "\n".join(linhas)
 
 
 def serializar_plano_e_compras(plano: PlanoRefeicoes, catalogo: Dict[str, Receita]) -> Dict[str, Any]:
@@ -71,7 +132,7 @@ class RecipeHandler(BaseHTTPRequestHandler):
     def end_headers(self):
         # Permitir requisições locais CORS se necessário
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         super().end_headers()
 
@@ -131,6 +192,7 @@ class RecipeHandler(BaseHTTPRequestHandler):
                 "tempo_preparacao": rec.tempo_preparacao,
                 "tempo_cozedura": rec.tempo_cozedura,
                 "categoria": rec.categoria,
+                "categoria_str": ", ".join(rec.categoria) if isinstance(rec.categoria, list) else str(rec.categoria),
                 "dificuldade": rec.dificuldade,
                 "ingredientes": [
                     {
@@ -143,8 +205,14 @@ class RecipeHandler(BaseHTTPRequestHandler):
                     }
                     for ing in rec.ingredientes
                 ],
+                "ingredientes_bruto": "\n".join(
+                    ing.texto_original if ing.texto_original.startswith(("-", "*", "•")) else f"- {ing.texto_original}"
+                    for ing in rec.ingredientes
+                ),
                 "instrucoes": rec.instrucoes,
-                "notas": rec.notas
+                "instrucoes_bruto": "\n".join(rec.instrucoes),
+                "notas": rec.notas,
+                "notas_bruto": "\n".join(rec.notas)
             }
             self.responder_json({"sucesso": True, "receita": detalhes})
             return
@@ -182,92 +250,154 @@ class RecipeHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"404 Nao Encontrado")
 
-    def do_POST(self):
-        parsed_url = urllib.parse.urlparse(self.path)
-        caminho = parsed_url.path
+    def ler_json_corpo(self) -> Optional[Dict[str, Any]]:
+        """Lê e converte o corpo da requisição para um dicionário Python."""
         comprimento = int(self.headers.get("Content-Length", 0))
         corpo_raw = self.rfile.read(comprimento).decode("utf-8") if comprimento > 0 else "{}"
         try:
-            dados = json.loads(corpo_raw)
+            return json.loads(corpo_raw)
         except json.JSONDecodeError:
             self.responder_erro("JSON inválido no corpo da requisição")
+            return None
+
+    def do_PUT(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        caminho = parsed_url.path
+
+        if caminho.startswith("/api/receitas/"):
+            rec_id = urllib.parse.unquote(caminho[len("/api/receitas/"):])
+            dados = self.ler_json_corpo()
+            if dados is not None:
+                self.salvar_receita(dados, rec_id_editar=rec_id)
             return
 
-        # 1. API: Criar Nova Receita
-        if caminho == "/api/receitas":
-            titulo = dados.get("titulo", "").strip()
-            if not titulo:
-                self.responder_erro("O título da receita é obrigatório")
+        self.responder_erro("Endpoint não encontrado", 404)
+
+    def salvar_receita(self, dados: Dict[str, Any], rec_id_editar: Optional[str] = None):
+        titulo = dados.get("titulo", "").strip()
+        if not titulo:
+            self.responder_erro("O título da receita é obrigatório")
+            return
+
+        try:
+            doses = int(dados.get("doses", 4))
+            if doses < 1:
+                doses = 1
+        except (ValueError, TypeError):
+            doses = 4
+
+        tempo_prep = dados.get("tempo_preparacao", "").strip()
+        tempo_coz = dados.get("tempo_cozedura", "").strip()
+        categoria = dados.get("categoria", "").strip()
+        dificuldade = dados.get("dificuldade", "Fácil").strip()
+        ingredientes_texto = dados.get("ingredientes", "").strip()
+        instrucoes_texto = dados.get("instrucoes", "").strip()
+        notas_texto = dados.get("notas", "").strip()
+
+        if not ingredientes_texto:
+            self.responder_erro("A lista de ingredientes é obrigatória")
+            return
+
+        if not instrucoes_texto:
+            self.responder_erro("O modo de preparação / instruções é obrigatório")
+            return
+
+        conteudo = formatar_conteudo_receita(
+            titulo=titulo,
+            doses=doses,
+            tempo_prep=tempo_prep,
+            tempo_coz=tempo_coz,
+            categoria=categoria,
+            dificuldade=dificuldade,
+            ingredientes_texto=ingredientes_texto,
+            instrucoes_texto=instrucoes_texto,
+            notas_texto=notas_texto
+        )
+
+        catalogo = carregar_todas_receitas(PASTA_RECEITAS)
+
+        if rec_id_editar:
+            # Modo Edição
+            rec = encontrar_receita(rec_id_editar, catalogo)
+            if not rec:
+                self.responder_erro("Receita não encontrada para edição", 404)
                 return
 
-            doses = int(dados.get("doses", 4))
-            tempo_prep = dados.get("tempo_preparacao", "").strip()
-            tempo_coz = dados.get("tempo_cozedura", "").strip()
-            categoria = dados.get("categoria", "").strip()
-            dificuldade = dados.get("dificuldade", "Fácil").strip()
-            ingredientes_texto = dados.get("ingredientes", "").strip()
-            instrucoes_texto = dados.get("instrucoes", "").strip()
-            notas_texto = dados.get("notas", "").strip()
+            novo_slug = slugificar(titulo)
+            novo_caminho = PASTA_RECEITAS / f"{novo_slug}.txt"
 
-            nome_ficheiro = f"{slugificar(titulo)}.txt"
-            caminho_ficheiro = PASTA_RECEITAS / nome_ficheiro
+            # Se mudou o nome e já existe outro ficheiro com esse nome
+            if novo_caminho != rec.caminho_ficheiro and novo_caminho.exists():
+                self.responder_erro(f"Já existe outra receita com o título '{titulo}'.", 400)
+                return
 
-            # Gerar conteúdo no formato padronizado
-            linhas = []
-            linhas.append(f"Título: {titulo}")
-            linhas.append(f"Doses: {doses}")
-            if tempo_prep:
-                linhas.append(f"Tempo de Preparação: {tempo_prep}")
-            if tempo_coz:
-                linhas.append(f"Tempo de Cozedura: {tempo_coz}")
-            if categoria:
-                linhas.append(f"Categoria: {categoria}")
-            if dificuldade:
-                linhas.append(f"Dificuldade: {dificuldade}")
-            linhas.append("")
+            with open(novo_caminho, "w", encoding="utf-8") as f:
+                f.write(conteudo)
 
-            linhas.append("Ingredientes:")
-            for ing in ingredientes_texto.split("\n"):
-                ing_limpo = ing.strip()
-                if not ing_limpo:
-                    continue
-                if not ing_limpo.startswith(("-", "*")):
-                    ing_limpo = f"- {ing_limpo}"
-                linhas.append(ing_limpo)
-            linhas.append("")
+            # Se o ficheiro foi renomeado, remover o antigo
+            if novo_caminho != rec.caminho_ficheiro and rec.caminho_ficheiro.exists():
+                try:
+                    rec.caminho_ficheiro.unlink()
+                except Exception:
+                    pass
 
-            linhas.append("Instruções:")
-            idx = 1
-            for inst in instrucoes_texto.split("\n"):
-                inst_limpa = inst.strip()
-                if not inst_limpa:
-                    continue
-                if not re.match(r"^\d+\.", inst_limpa):
-                    inst_limpa = f"{idx}. {inst_limpa}"
-                    idx += 1
-                linhas.append(inst_limpa)
-            linhas.append("")
-
-            if notas_texto:
-                linhas.append("Notas:")
-                for n in notas_texto.split("\n"):
-                    n_limpa = n.strip()
-                    if not n_limpa:
-                        continue
-                    if not n_limpa.startswith("-"):
-                        n_limpa = f"- {n_limpa}"
-                    linhas.append(n_limpa)
-                linhas.append("")
-
-            with open(caminho_ficheiro, "w", encoding="utf-8") as f:
-                f.write("\n".join(linhas))
+            # Atualizar plano ativo se esta receita estiver presente
+            if FICHEIRO_PLANO.exists():
+                try:
+                    plano = PlanoRefeicoes.carregar(FICHEIRO_PLANO)
+                    if plano:
+                        atualizou_plano = False
+                        for item in plano.itens:
+                            if item.receita_id == rec.id or item.receita_id == rec_id_editar:
+                                item.receita_id = novo_slug
+                                item.titulo = titulo
+                                item.doses_base = doses
+                                item.fator_escala = (plano.pessoas * item.refeicoes_cobertas) / item.doses_base
+                                item.doses_necessarias = plano.pessoas * item.refeicoes_cobertas
+                                atualizou_plano = True
+                        if atualizou_plano:
+                            plano.guardar(FICHEIRO_PLANO)
+                except Exception as e:
+                    print(f"Aviso ao atualizar plano após edição: {e}")
 
             self.responder_json({
                 "sucesso": True,
-                "mensagem": f"Receita '{titulo}' guardada com sucesso!",
-                "ficheiro": nome_ficheiro,
-                "id": caminho_ficheiro.stem
+                "mensagem": f"Receita '{titulo}' atualizada com sucesso!",
+                "ficheiro": novo_caminho.name,
+                "id": novo_slug
             })
+            return
+
+        # Modo Criação
+        nome_ficheiro = f"{slugificar(titulo)}.txt"
+        caminho_ficheiro = PASTA_RECEITAS / nome_ficheiro
+
+        with open(caminho_ficheiro, "w", encoding="utf-8") as f:
+            f.write(conteudo)
+
+        self.responder_json({
+            "sucesso": True,
+            "mensagem": f"Receita '{titulo}' guardada com sucesso!",
+            "ficheiro": nome_ficheiro,
+            "id": caminho_ficheiro.stem
+        })
+
+    def do_POST(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        caminho = parsed_url.path
+
+        dados = self.ler_json_corpo()
+        if dados is None:
+            return
+
+        # 1. API: Criar ou Editar Receita
+        if caminho == "/api/receitas":
+            self.salvar_receita(dados, rec_id_editar=None)
+            return
+
+        if caminho.startswith("/api/receitas/"):
+            rec_id = urllib.parse.unquote(caminho[len("/api/receitas/"):])
+            self.salvar_receita(dados, rec_id_editar=rec_id)
             return
 
         # 2. API: Planear Refeições
@@ -388,7 +518,7 @@ def iniciar_servidor(porta: int = 8000, abrir_browser: bool = True):
     print(f"Pressione Ctrl+C para encerrar o servidor.\n")
 
     if abrir_browser:
-        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+        threading.Timer(0.8, lambda: webbrowser.open(url_local)).start()
 
     try:
         servidor.serve_forever()
