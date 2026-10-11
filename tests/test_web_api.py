@@ -241,6 +241,40 @@ class TestWebApi(unittest.TestCase):
             if ficheiro.exists():
                 ficheiro.unlink()
 
+    def test_post_planear_apenas_selecionadas_escala_quantidades(self):
+        # 7 dias, 2 refeicoes/dia = 14 refeições para 2 pessoas (28 doses totais)
+        # Escolhas com 1 refeição cada -> devem escalar para 7 refeições (14 doses) cada
+        payload = json.dumps({
+            "dias": 7,
+            "pessoas": 2,
+            "refeicoes_dia": 2,
+            "escolhas": [
+                {"receita_id": "bacalhau_a_bras", "refeicoes": 1},
+                {"receita_id": "frango_com_caril", "refeicoes": 1}
+            ],
+            "preencher_aleatorio": False
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            f"{self.base_url}/api/planear",
+            data=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        res = urllib.request.urlopen(req)
+        self.assertEqual(res.status, 200)
+        data = json.loads(res.read().decode("utf-8"))
+        self.assertTrue(data.get("sucesso"))
+
+        plano = data.get("plano")
+        self.assertEqual(plano["total_refeicoes_alvo"], 14)
+        self.assertEqual(len(plano["itens"]), 2)
+        total_refeicoes = sum(item["refeicoes_cobertas"] for item in plano["itens"])
+        self.assertEqual(total_refeicoes, 14)
+
+        for item in plano["itens"]:
+            self.assertEqual(item["refeicoes_cobertas"], 7)
+            self.assertEqual(item["doses_necessarias"], 14)
+
 
 if __name__ == "__main__":
     unittest.main()

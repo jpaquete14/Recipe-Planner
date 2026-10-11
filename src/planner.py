@@ -98,6 +98,61 @@ def encontrar_receita(termo: str, catalogo: Dict[str, Receita]) -> Optional[Rece
     return None
 
 
+def distribuir_refeicoes_proporcionalmente(
+    total_alvo: int,
+    escolhas: List[Tuple[str, int]]
+) -> List[Tuple[str, int]]:
+    """
+    Distribui total_alvo refeições proporcionalmente aos pesos/refeições em escolhas,
+    garantindo que a soma final seja exatamente total_alvo e que
+    os valores sejam inteiros >= 1 (quando total_alvo >= len(escolhas)).
+    """
+    if not escolhas or total_alvo <= 0:
+        return []
+
+    k = len(escolhas)
+
+    # Se os valores fornecidos já somam exatamente total_alvo, mantemos os valores
+    soma_atual = sum(w for _, w in escolhas)
+    if soma_atual == total_alvo and all(w > 0 for _, w in escolhas):
+        return list(escolhas)
+
+    # Se total_alvo < k (mais receitas selecionadas do que refeições no plano)
+    if total_alvo < k:
+        indexado = [(escolhas[i][1], -i, escolhas[i][0]) for i in range(k)]
+        indexado.sort(reverse=True)
+        termos_selecionados = {item[2] for item in indexado[:total_alvo]}
+        resultado = []
+        for termo, _ in escolhas:
+            if termo in termos_selecionados:
+                resultado.append((termo, 1))
+        return resultado
+
+    # Se total_alvo >= k:
+    # Garante pelo menos 1 refeição para cada receita selecionada
+    # e distribui o restante (total_alvo - k) proporcionalmente aos pesos
+    pesos_positivos = [max(1, w) for _, w in escolhas]
+    peso_total = sum(pesos_positivos)
+    restante = total_alvo - k
+
+    alocados = [1] * k
+    if restante > 0:
+        quotas = [(restante * p) / peso_total for p in pesos_positivos]
+        inteiros = [int(q) for q in quotas]
+        restos = [q - int(q) for q in quotas]
+
+        for i in range(k):
+            alocados[i] += inteiros[i]
+
+        diferenca = total_alvo - sum(alocados)
+        if diferenca > 0:
+            ordem_restos = sorted(range(k), key=lambda i: restos[i], reverse=True)
+            for idx in ordem_restos[:diferenca]:
+                alocados[idx] += 1
+
+    return [(escolhas[i][0], alocados[i]) for i in range(k)]
+
+
 def criar_item_plano(receita: Receita, refeicoes_cobertas: int, pessoas: int) -> ItemPlano:
     """Calcula as doses e fator de escala para uma dada receita."""
     doses_necessarias = refeicoes_cobertas * pessoas
@@ -123,12 +178,15 @@ def gerar_plano(
     escolhas_manuais: Optional[List[Tuple[str, int]]] = None,
     preencher_aleatorio: bool = True,
     refeicoes_por_lote_aleatorio: int = 2,
-    semente_aleatoria: Optional[int] = None
+    semente_aleatoria: Optional[int] = None,
+    escalar_escolhas: Optional[bool] = None
 ) -> PlanoRefeicoes:
     """
     Gera um plano de refeições com base nos dias, pessoas e escolhas manuais/aleatórias.
     - Se total_refeicoes_explicito for fornecido, prevalece sobre dias * refeicoes_por_dia.
     - escolhas_manuais: Lista de tuplos (termo_receita, num_refeicoes_a_cobrir).
+    - escalar_escolhas: Se True (ou por predefinição quando preencher_aleatorio=False),
+      ajusta as refeições selecionadas para cobrir a totalidade do plano.
     """
     if semente_aleatoria is not None:
         random.seed(semente_aleatoria)
@@ -143,14 +201,27 @@ def gerar_plano(
 
     ids_usados = set()
 
+    deve_escalar = escalar_escolhas if escalar_escolhas is not None else (not preencher_aleatorio)
+
     # 1. Processar escolhas manuais
     if escolhas_manuais:
-        for termo, num_ref in escolhas_manuais:
+        # Validar previamente a existência de todas as receitas
+        for termo, _ in escolhas_manuais:
+            rec = encontrar_receita(termo, catalogo)
+            if not rec:
+                raise ValueError(f"Receita não encontrada: '{termo}'")
+
+        if deve_escalar:
+            escolhas_processadas = distribuir_refeicoes_proporcionalmente(total_alvo, escolhas_manuais)
+        else:
+            escolhas_processadas = escolhas_manuais
+
+        for termo, num_ref in escolhas_processadas:
             rec = encontrar_receita(termo, catalogo)
             if not rec:
                 raise ValueError(f"Receita não encontrada: '{termo}'")
             
-            # Se for 0 ou não especificado e houver apenas 1 escolha para todos os dias
+            # Se for 0 ou não especificado e não tiver sido escalado
             if num_ref <= 0:
                 num_ref = max(1, total_alvo - refeicoes_alocadas)
             

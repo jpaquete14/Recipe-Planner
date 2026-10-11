@@ -259,17 +259,30 @@ async function gerarPlano(usarManuais = false, preencherAleatorio = true) {
     }
   }
 
+  if (usarManuais && !preencherAleatorio && escolhas.length === 0) {
+    mostrarToast('⚠️ Selecione pelo menos uma receita manual.');
+    return;
+  }
+
   const payload = {
     dias: config.dias,
     pessoas: config.pessoas,
     refeicoes_dia: config.refeicoesDia,
     escolhas: escolhas,
-    preencher_aleatorio: preencherAleatorio
+    preencher_aleatorio: preencherAleatorio,
+    escalar_selecionadas: !preencherAleatorio
   };
 
   try {
     dom.btnGerarAleatorio.disabled = true;
-    dom.btnGerarAleatorio.textContent = 'A gerar plano...';
+    if (dom.btnAplicarEscolhas) dom.btnAplicarEscolhas.disabled = true;
+    if (dom.btnApenasSelecionadas) dom.btnApenasSelecionadas.disabled = true;
+
+    if (!preencherAleatorio && dom.btnApenasSelecionadas) {
+      dom.btnApenasSelecionadas.textContent = 'A ajustar quantidades...';
+    } else {
+      dom.btnGerarAleatorio.textContent = 'A gerar plano...';
+    }
 
     const res = await fetch('/api/planear', {
       method: 'POST',
@@ -281,9 +294,29 @@ async function gerarPlano(usarManuais = false, preencherAleatorio = true) {
     if (data.sucesso) {
       planoAtual = data.plano;
       listaComprasAtual = data.lista_compras;
+
+      // Se usou apenas as selecionadas, sincronizar contadores manuais com os valores ajustados
+      if (!preencherAleatorio && planoAtual && planoAtual.itens) {
+        const itensMap = {};
+        planoAtual.itens.forEach(it => {
+          itensMap[it.receita_id] = it.refeicoes_cobertas;
+        });
+        for (const recId of Object.keys(config.escolhasManuais)) {
+          const novoVal = itensMap[recId] || 0;
+          config.escolhasManuais[recId] = novoVal;
+          const el = document.getElementById(`manual-val-${recId}`);
+          if (el) el.textContent = novoVal;
+        }
+      }
+
       renderizarPlano(planoAtual);
       renderizarListaCompras(listaComprasAtual, planoAtual);
-      mostrarToast('✅ Plano gerado e lista de compras atualizada!');
+
+      if (!preencherAleatorio) {
+        mostrarToast(`✅ Quantidades ajustadas para cobrir as ${planoAtual.total_refeicoes_planeadas} refeições do plano!`);
+      } else {
+        mostrarToast('✅ Plano gerado e lista de compras atualizada!');
+      }
     } else {
       mostrarToast(`❌ ${data.erro || 'Erro ao gerar plano'}`);
     }
@@ -293,6 +326,11 @@ async function gerarPlano(usarManuais = false, preencherAleatorio = true) {
   } finally {
     dom.btnGerarAleatorio.disabled = false;
     dom.btnGerarAleatorio.innerHTML = '<span>✨</span> Gerar Plano Completo';
+    if (dom.btnAplicarEscolhas) dom.btnAplicarEscolhas.disabled = false;
+    if (dom.btnApenasSelecionadas) {
+      dom.btnApenasSelecionadas.disabled = false;
+      dom.btnApenasSelecionadas.innerHTML = '<span>🔒</span> Usar Apenas as Selecionadas';
+    }
   }
 }
 

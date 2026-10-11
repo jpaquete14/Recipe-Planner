@@ -420,6 +420,11 @@ class RecipeHandler(BaseHTTPRequestHandler):
 
             preencher_aleatorio = bool(dados.get("preencher_aleatorio", True))
             refeicoes_por_lote = int(dados.get("refeicoes_por_lote", 2))
+            escalar_selecionadas = dados.get("escalar_selecionadas")
+            if escalar_selecionadas is not None:
+                escalar_selecionadas = bool(escalar_selecionadas)
+            else:
+                escalar_selecionadas = not preencher_aleatorio
 
             try:
                 plano = gerar_plano(
@@ -430,7 +435,8 @@ class RecipeHandler(BaseHTTPRequestHandler):
                     total_refeicoes_explicito=total_refeicoes,
                     escolhas_manuais=escolhas,
                     preencher_aleatorio=preencher_aleatorio,
-                    refeicoes_por_lote_aleatorio=refeicoes_por_lote
+                    refeicoes_por_lote_aleatorio=refeicoes_por_lote,
+                    escalar_escolhas=escalar_selecionadas
                 )
                 plano.guardar(FICHEIRO_PLANO)
                 resultado = serializar_plano_e_compras(plano, catalogo)
