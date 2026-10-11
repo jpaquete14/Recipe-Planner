@@ -17,6 +17,18 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+# Configurar saída UTF-8 para terminais Windows
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from src.recipe_parser import carregar_todas_receitas, parse_receita_ficheiro, Receita
 from src.planner import (
     PlanoRefeicoes,
