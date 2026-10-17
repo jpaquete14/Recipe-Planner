@@ -827,6 +827,23 @@ body {
   animation: slideIn 0.25s ease-out;
 }
 
+/* BOTAO WHATSAPP */
+.btn-whatsapp {
+  background-color: #25d366;
+  color: white;
+  box-shadow: 0 2px 4px rgba(37, 211, 102, 0.25);
+}
+.btn-whatsapp:hover {
+  background-color: #128c7e;
+  color: white;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
