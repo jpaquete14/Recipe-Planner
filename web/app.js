@@ -44,7 +44,12 @@ const dom = {
   metaPessoas: document.getElementById('meta-pessoas'),
   metaRefeicoes: document.getElementById('meta-refeicoes'),
   btnCopiarCompras: document.getElementById('btn-copiar-compras'),
+  btnWhatsappCompras: document.getElementById('btn-whatsapp-compras'),
+  btnCopiarMd: document.getElementById('btn-copiar-md'),
   btnDescarregarCompras: document.getElementById('btn-descarregar-compras'),
+  modalCopiarManual: document.getElementById('modal-copiar-manual'),
+  modalCopiarTitulo: document.getElementById('modal-copiar-titulo'),
+  textareaCopiarManual: document.getElementById('textarea-copiar-manual'),
   gridCatalogo: document.getElementById('grid-catalogo'),
   filtroPesquisa: document.getElementById('filtro-pesquisa'),
   filtroCategorias: document.getElementById('filtro-categorias'),
@@ -190,6 +195,12 @@ function configurarControlosPlaneamento() {
 
   // Botões da lista de compras
   dom.btnCopiarCompras.addEventListener('click', copiarListaCompras);
+  if (dom.btnWhatsappCompras) {
+    dom.btnWhatsappCompras.addEventListener('click', abrirWhatsApp);
+  }
+  if (dom.btnCopiarMd) {
+    dom.btnCopiarMd.addEventListener('click', copiarMarkdownCompras);
+  }
   dom.btnDescarregarCompras.addEventListener('click', descarregarListaCompras);
 
   // Modal Troca
@@ -444,16 +455,15 @@ function renderizarListaCompras(compras, plano) {
   }
 }
 
-function copiarListaCompras() {
-  if (!listaComprasAtual || !listaComprasAtual.markdown) {
-    mostrarToast('Nenhuma lista de compras ativa.');
-    return;
+function obterTextoListaWhatsApp() {
+  if (!listaComprasAtual || !listaComprasAtual.seccoes) {
+    return '';
   }
 
-  // Gera uma versão simples e limpa para colar no WhatsApp ou bloco de notas
-  let textoSimples = `🛒 LISTA DE COMPRAS (${planoAtual.dias} dias, ${planoAtual.pessoas} pessoas)\n\n`;
+  let textoSimples = `🛒 LISTA DE COMPRAS (${planoAtual ? planoAtual.dias : 7} dias, ${planoAtual ? planoAtual.pessoas : 2} pessoas)\n\n`;
 
   for (const [seccao, itens] of Object.entries(listaComprasAtual.seccoes)) {
+    if (!itens || itens.length === 0) continue;
     textoSimples += `*${seccao}*\n`;
     itens.forEach(it => {
       const conetor = it.quantidade_str && !it.nome.toLowerCase().startsWith('de ') ? ' de ' : ' ';
@@ -463,11 +473,121 @@ function copiarListaCompras() {
     textoSimples += '\n';
   }
 
-  navigator.clipboard.writeText(textoSimples.trim()).then(() => {
+  return textoSimples.trim();
+}
+
+/**
+ * Fallback de cópia para Android/iOS e contextos HTTP não-seguros via document.execCommand
+ */
+function fallbackCopiar(texto) {
+  const textarea = document.createElement('textarea');
+  textarea.value = texto;
+  // readonly previne o teclado virtual de abrir no Android durante a seleção
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.top = '0';
+  textarea.style.left = '0';
+  textarea.style.width = '2em';
+  textarea.style.height = '2em';
+  textarea.style.padding = '0';
+  textarea.style.border = 'none';
+  textarea.style.outline = 'none';
+  textarea.style.boxShadow = 'none';
+  textarea.style.background = 'transparent';
+  textarea.style.opacity = '0';
+  textarea.style.zIndex = '-9999';
+
+  document.body.appendChild(textarea);
+
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let copiado = false;
+  try {
+    copiado = document.execCommand('copy');
+  } catch (err) {
+    console.warn('document.execCommand falhou:', err);
+    copiado = false;
+  }
+
+  document.body.removeChild(textarea);
+  return copiado;
+}
+
+/**
+ * Copia texto com deteção automática de suporte (Clipboard API ou execCommand)
+ * e abre modal de seleção manual como contingência em mobile restritivo.
+ */
+async function copiarParaAreaDeTransferencia(texto, titulo = 'Lista de Compras') {
+  // 1. Tentar Clipboard API moderna se estiver num contexto seguro (HTTPS ou localhost)
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    } catch (err) {
+      console.warn('navigator.clipboard.writeText falhou, a tentar fallback:', err);
+    }
+  }
+
+  // 2. Fallback robusto para dispositivos Android/iOS acedendo via HTTP (IP local)
+  if (fallbackCopiar(texto)) {
+    return true;
+  }
+
+  // 3. Fallback de contingência caso o navegador bloqueie acesso à área de transferência
+  abrirModalCopiarManual(texto, titulo);
+  return false;
+}
+
+async function copiarListaCompras() {
+  const texto = obterTextoListaWhatsApp();
+  if (!texto) {
+    mostrarToast('Nenhuma lista de compras ativa.');
+    return;
+  }
+
+  const copiou = await copiarParaAreaDeTransferencia(texto, 'Lista de Compras (WhatsApp/Notas)');
+  if (copiou) {
     mostrarToast('📋 Lista copiada para a área de transferência!');
-  }).catch(() => {
-    mostrarToast('Erro ao copiar lista.');
-  });
+  }
+}
+
+async function copiarMarkdownCompras() {
+  if (!listaComprasAtual || !listaComprasAtual.markdown) {
+    mostrarToast('Nenhuma lista de compras ativa.');
+    return;
+  }
+
+  const copiou = await copiarParaAreaDeTransferencia(listaComprasAtual.markdown, 'Markdown da Lista');
+  if (copiou) {
+    mostrarToast('📝 Markdown copiado para a área de transferência!');
+  }
+}
+
+function abrirWhatsApp() {
+  const texto = obterTextoListaWhatsApp();
+  if (!texto) {
+    mostrarToast('Nenhuma lista de compras ativa.');
+    return;
+  }
+
+  // Se o browser móvel tiver a Web Share API, partilhar nativamente
+  if (navigator.share && window.isSecureContext) {
+    navigator.share({
+      title: 'Lista de Compras — Recipe Planner',
+      text: texto
+    }).catch(() => {
+      // Se utilizador cancelou ou falhou, abrir fallback WhatsApp
+      const urlWa = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+      window.open(urlWa, '_blank');
+    });
+    return;
+  }
+
+  // Fallback universal: link oficial do WhatsApp Web/App
+  const urlWhatsapp = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  window.open(urlWhatsapp, '_blank');
 }
 
 function descarregarListaCompras() {
@@ -475,15 +595,67 @@ function descarregarListaCompras() {
     mostrarToast('Nenhuma lista de compras ativa.');
     return;
   }
-  const blob = new Blob([listaComprasAtual.markdown], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `lista_compras_${planoAtual.dias}dias.md`;
-  a.click();
-  URL.revokeObjectURL(url);
-  mostrarToast('💾 Ficheiro Markdown descarregado!');
+
+  try {
+    const blob = new Blob([listaComprasAtual.markdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `lista_compras_${planoAtual ? planoAtual.dias : 7}dias.md`;
+    document.body.appendChild(a);
+    a.click();
+
+    // Atraso seguro para o Android iniciar a transferência antes de revogar o blob
+    setTimeout(() => {
+      if (document.body.contains(a)) {
+        document.body.removeChild(a);
+      }
+      URL.revokeObjectURL(url);
+    }, 4000);
+
+    mostrarToast('💾 Ficheiro Markdown descarregado!');
+  } catch (err) {
+    console.error('Erro ao descarregar ficheiro:', err);
+    mostrarToast('Erro ao descarregar ficheiro.');
+  }
 }
+
+// Modal de contingência para cópia manual
+window.abrirModalCopiarManual = function(texto, titulo = 'Copiar Lista') {
+  if (dom.modalCopiarTitulo) dom.modalCopiarTitulo.textContent = `📋 ${titulo}`;
+  if (dom.textareaCopiarManual) {
+    dom.textareaCopiarManual.value = texto;
+  }
+  if (dom.modalCopiarManual) {
+    dom.modalCopiarManual.classList.remove('hidden');
+    setTimeout(() => {
+      selecionarTextoCopiarManual();
+    }, 150);
+  }
+};
+
+window.fecharModalCopiarManual = function() {
+  if (dom.modalCopiarManual) {
+    dom.modalCopiarManual.classList.add('hidden');
+  }
+};
+
+window.selecionarTextoCopiarManual = function() {
+  if (dom.textareaCopiarManual) {
+    dom.textareaCopiarManual.focus();
+    dom.textareaCopiarManual.select();
+    dom.textareaCopiarManual.setSelectionRange(0, dom.textareaCopiarManual.value.length);
+    try {
+      const copiou = document.execCommand('copy');
+      if (copiou) {
+        mostrarToast('📋 Texto copiado com sucesso!');
+      }
+    } catch (e) {
+      // Mantém selecionado para cópia manual via menu móvel
+    }
+  }
+};
 
 // ==========================================
 // SELEÇÃO MANUAL DE REFEIÇÕES

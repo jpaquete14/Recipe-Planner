@@ -160,6 +160,12 @@
           <button id="btn-copiar-compras" class="btn btn-secondary">
             <span>📋</span> Copiar para Notas / WhatsApp
           </button>
+          <button id="btn-whatsapp-compras" class="btn btn-whatsapp">
+            <span>💬</span> Abrir no WhatsApp
+          </button>
+          <button id="btn-copiar-md" class="btn btn-outline" title="Copiar em formato Markdown">
+            <span>📝</span> Copiar Markdown
+          </button>
           <button id="btn-descarregar-compras" class="btn btn-outline">
             <span>💾</span> Descarregar Markdown (.md)
           </button>
@@ -408,6 +414,25 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="fecharModalTrocar()">Cancelar</button>
         <button id="btn-confirmar-troca" class="btn btn-primary">Confirmar Troca</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: COPIAR TEXTO MANUAL -->
+  <div id="modal-copiar-manual" class="modal hidden">
+    <div class="modal-backdrop" onclick="fecharModalCopiarManual()"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-copiar-titulo">📋 Copiar Lista de Compras</h3>
+        <button class="modal-close" onclick="fecharModalCopiarManual()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-2">Pode selecionar e copiar o texto abaixo:</p>
+        <textarea id="textarea-copiar-manual" rows="12" class="form-textarea" readonly style="font-family: monospace; font-size: 0.9rem; width: 100%;"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="fecharModalCopiarManual()">Fechar</button>
+        <button class="btn btn-primary" onclick="selecionarTextoCopiarManual()">Selecionar Tudo</button>
       </div>
     </div>
   </div>
