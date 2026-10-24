@@ -432,6 +432,14 @@ class RecipeHandler(BaseHTTPRequestHandler):
 
             preencher_aleatorio = bool(dados.get("preencher_aleatorio", True))
             refeicoes_por_lote = int(dados.get("refeicoes_por_lote", 2))
+            refeicoes_diferentes_raw = dados.get("refeicoes_diferentes")
+            refeicoes_diferentes = None
+            if refeicoes_diferentes_raw is not None and str(refeicoes_diferentes_raw).strip() != "":
+                try:
+                    refeicoes_diferentes = int(refeicoes_diferentes_raw)
+                except (ValueError, TypeError):
+                    refeicoes_diferentes = None
+
             escalar_selecionadas = dados.get("escalar_selecionadas")
             if escalar_selecionadas is not None:
                 escalar_selecionadas = bool(escalar_selecionadas)
@@ -448,7 +456,8 @@ class RecipeHandler(BaseHTTPRequestHandler):
                     escolhas_manuais=escolhas,
                     preencher_aleatorio=preencher_aleatorio,
                     refeicoes_por_lote_aleatorio=refeicoes_por_lote,
-                    escalar_escolhas=escalar_selecionadas
+                    escalar_escolhas=escalar_selecionadas,
+                    refeicoes_diferentes=refeicoes_diferentes
                 )
                 plano.guardar(FICHEIRO_PLANO)
                 resultado = serializar_plano_e_compras(plano, catalogo)

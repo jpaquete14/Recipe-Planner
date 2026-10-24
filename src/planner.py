@@ -36,10 +36,15 @@ class PlanoRefeicoes:
     refeicoes_por_dia: int
     total_refeicoes_alvo: int
     itens: List[ItemPlano]
+    refeicoes_diferentes: Optional[int] = None
 
     @property
     def total_refeicoes_planeadas(self) -> int:
         return sum(item.refeicoes_cobertas for item in self.itens)
+
+    @property
+    def total_refeicoes_diferentes(self) -> int:
+        return len({item.receita_id for item in self.itens})
 
     def to_dict(self) -> dict:
         return {
@@ -47,6 +52,7 @@ class PlanoRefeicoes:
             "pessoas": self.pessoas,
             "refeicoes_por_dia": self.refeicoes_por_dia,
             "total_refeicoes_alvo": self.total_refeicoes_alvo,
+            "refeicoes_diferentes": self.refeicoes_diferentes,
             "itens": [item.to_dict() for item in self.itens]
         }
 
@@ -58,7 +64,8 @@ class PlanoRefeicoes:
             pessoas=data.get("pessoas", 2),
             refeicoes_por_dia=data.get("refeicoes_por_dia", 2),
             total_refeicoes_alvo=data.get("total_refeicoes_alvo", 14),
-            itens=itens
+            itens=itens,
+            refeicoes_diferentes=data.get("refeicoes_diferentes")
         )
 
     def guardar(self, caminho: Path) -> None:
@@ -179,7 +186,8 @@ def gerar_plano(
     preencher_aleatorio: bool = True,
     refeicoes_por_lote_aleatorio: int = 2,
     semente_aleatoria: Optional[int] = None,
-    escalar_escolhas: Optional[bool] = None
+    escalar_escolhas: Optional[bool] = None,
+    refeicoes_diferentes: Optional[int] = None
 ) -> PlanoRefeicoes:
     """
     Gera um plano de refeições com base nos dias, pessoas e escolhas manuais/aleatórias.
@@ -187,6 +195,8 @@ def gerar_plano(
     - escolhas_manuais: Lista de tuplos (termo_receita, num_refeicoes_a_cobrir).
     - escalar_escolhas: Se True (ou por predefinição quando preencher_aleatorio=False),
       ajusta as refeições selecionadas para cobrir a totalidade do plano.
+    - refeicoes_diferentes: Se especificado, limita o plano a um número exato de receitas diferentes,
+      distribuindo as refeições necessárias proporcionalmente entre elas.
     """
     if semente_aleatoria is not None:
         random.seed(semente_aleatoria)
@@ -199,9 +209,86 @@ def gerar_plano(
     if not receitas_unicas:
         raise ValueError("O catálogo de receitas está vazio. Adicione ficheiros .txt em recipes/")
 
-    ids_usados = set()
-
     deve_escalar = escalar_escolhas if escalar_escolhas is not None else (not preencher_aleatorio)
+
+    # Modo: Número específico de refeições diferentes
+    if refeicoes_diferentes is not None:
+        if refeicoes_diferentes <= 0:
+            raise ValueError("O número de refeições diferentes deve ser pelo menos 1.")
+        if refeicoes_diferentes > total_alvo:
+            raise ValueError(
+                f"O número de refeições diferentes ({refeicoes_diferentes}) não pode ser superior "
+                f"ao total de refeições do plano ({total_alvo})."
+            )
+        if refeicoes_diferentes > len(receitas_unicas):
+            raise ValueError(
+                f"O número de refeições diferentes ({refeicoes_diferentes}) não pode ser superior "
+                f"ao total de receitas disponíveis no catálogo ({len(receitas_unicas)})."
+            )
+
+        ids_manuais = set()
+        receitas_manuais: List[Tuple[Receita, int]] = []
+        if escolhas_manuais:
+            for termo, num_ref in escolhas_manuais:
+                rec = encontrar_receita(termo, catalogo)
+                if not rec:
+                    raise ValueError(f"Receita não encontrada: '{termo}'")
+                if rec.id not in ids_manuais:
+                    ids_manuais.add(rec.id)
+                    receitas_manuais.append((rec, num_ref))
+
+        if len(receitas_manuais) > refeicoes_diferentes:
+            raise ValueError(
+                f"Foram selecionadas {len(receitas_manuais)} receitas manuais, mas foi solicitado um limite "
+                f"de {refeicoes_diferentes} refeições diferentes."
+            )
+
+        faltam = refeicoes_diferentes - len(receitas_manuais)
+        receitas_finais: List[Tuple[Receita, int]] = list(receitas_manuais)
+
+        if faltam > 0:
+            disponiveis = [r for r in receitas_unicas if r.id not in ids_manuais]
+            random.shuffle(disponiveis)
+            for r in disponiveis[:faltam]:
+                receitas_finais.append((r, 0))
+
+        soma_manuais = sum(nr for _, nr in receitas_manuais if nr > 0)
+        tem_manuais_com_qtd = any(nr > 0 for _, nr in receitas_manuais)
+
+        if not tem_manuais_com_qtd or deve_escalar:
+            pares_para_distribuir = [(rec.id, nr if nr > 0 else 1) for rec, nr in receitas_finais]
+            distribuidos = distribuir_refeicoes_proporcionalmente(total_alvo, pares_para_distribuir)
+            rec_map = {rec.id: rec for rec, _ in receitas_finais}
+            for rec_id, qtd in distribuidos:
+                itens.append(criar_item_plano(rec_map[rec_id], qtd, pessoas))
+        else:
+            if soma_manuais + faltam <= total_alvo and faltam > 0:
+                for rec, nr in receitas_manuais:
+                    itens.append(criar_item_plano(rec, nr, pessoas))
+                restante = total_alvo - soma_manuais
+                adicionais = receitas_finais[len(receitas_manuais):]
+                pares_adicionais = [(rec.id, 1) for rec, _ in adicionais]
+                dist_adicionais = distribuir_refeicoes_proporcionalmente(restante, pares_adicionais)
+                rec_map = {rec.id: rec for rec, _ in adicionais}
+                for rec_id, qtd in dist_adicionais:
+                    itens.append(criar_item_plano(rec_map[rec_id], qtd, pessoas))
+            else:
+                pares = [(rec.id, nr if nr > 0 else 1) for rec, nr in receitas_finais]
+                distribuidos = distribuir_refeicoes_proporcionalmente(total_alvo, pares)
+                rec_map = {rec.id: rec for rec, _ in receitas_finais}
+                for rec_id, qtd in distribuidos:
+                    itens.append(criar_item_plano(rec_map[rec_id], qtd, pessoas))
+
+        return PlanoRefeicoes(
+            dias=dias,
+            pessoas=pessoas,
+            refeicoes_por_dia=refeicoes_por_dia,
+            total_refeicoes_alvo=total_alvo,
+            itens=itens,
+            refeicoes_diferentes=refeicoes_diferentes
+        )
+
+    ids_usados = set()
 
     # 1. Processar escolhas manuais
     if escolhas_manuais:

@@ -10,6 +10,7 @@ let config = {
   dias: 7,
   pessoas: 2,
   refeicoesDia: 2,
+  refeicoesDiferentes: null,
   escolhasManuais: {} // { receita_id: refeicoes_cobertas }
 };
 
@@ -26,6 +27,9 @@ const dom = {
   btnMaisPessoas: document.getElementById('btn-mais-pessoas'),
   labelPessoas: document.getElementById('label-pessoas'),
   selectRefeicoesDia: document.getElementById('select-refeicoes-dia'),
+  selectRefeicoesDiferentes: document.getElementById('select-refeicoes-diferentes'),
+  boxRefDifCustom: document.getElementById('box-ref-dif-custom'),
+  inputRefeicoesDiferentes: document.getElementById('input-refeicoes-diferentes'),
   badgeTotalRefeicoes: document.getElementById('badge-total-refeicoes'),
   badgeResumoCalculo: document.getElementById('badge-resumo-calculo'),
   btnGerarAleatorio: document.getElementById('btn-gerar-aleatorio'),
@@ -42,6 +46,7 @@ const dom = {
   comprasResumoCard: document.getElementById('compras-resumo-card'),
   metaDias: document.getElementById('meta-dias'),
   metaPessoas: document.getElementById('meta-pessoas'),
+  metaRefDif: document.getElementById('meta-ref-dif'),
   metaRefeicoes: document.getElementById('meta-refeicoes'),
   btnCopiarCompras: document.getElementById('btn-copiar-compras'),
   btnWhatsappCompras: document.getElementById('btn-whatsapp-compras'),
@@ -174,6 +179,34 @@ function configurarControlosPlaneamento() {
     atualizarSumarioCalculo();
   });
 
+  // Refeições diferentes
+  if (dom.selectRefeicoesDiferentes) {
+    dom.selectRefeicoesDiferentes.addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val === 'personalizado') {
+        if (dom.boxRefDifCustom) dom.boxRefDifCustom.classList.remove('hidden');
+        config.refeicoesDiferentes = parseInt(dom.inputRefeicoesDiferentes.value, 10) || 2;
+      } else if (val) {
+        if (dom.boxRefDifCustom) dom.boxRefDifCustom.classList.add('hidden');
+        config.refeicoesDiferentes = parseInt(val, 10);
+      } else {
+        if (dom.boxRefDifCustom) dom.boxRefDifCustom.classList.add('hidden');
+        config.refeicoesDiferentes = null;
+      }
+      atualizarSumarioCalculo();
+    });
+  }
+
+  if (dom.inputRefeicoesDiferentes) {
+    dom.inputRefeicoesDiferentes.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (!isNaN(val) && val > 0) {
+        config.refeicoesDiferentes = val;
+        atualizarSumarioCalculo();
+      }
+    });
+  }
+
   // Toggle do bloco de escolhas manuais
   dom.toggleEscolhasManuais.addEventListener('click', () => {
     dom.toggleEscolhasManuais.classList.toggle('open');
@@ -221,7 +254,13 @@ function atualizarSumarioCalculo() {
   const totalRef = config.dias * config.refeicoesDia;
   const dosesTotais = totalRef * config.pessoas;
   dom.badgeTotalRefeicoes.textContent = `Total: ${totalRef} refeições`;
-  dom.badgeResumoCalculo.textContent = `(${config.dias} dias × ${config.refeicoesDia} ref. × ${config.pessoas} pessoas = ${dosesTotais} doses totais)`;
+
+  let extraStr = '';
+  if (config.refeicoesDiferentes) {
+    const dosesPorPrato = (dosesTotais / config.refeicoesDiferentes).toFixed(1).replace('.0', '');
+    extraStr = ` | ${config.refeicoesDiferentes} pratos diferentes (~${dosesPorPrato} doses cada)`;
+  }
+  dom.badgeResumoCalculo.textContent = `(${config.dias} dias × ${config.refeicoesDia} ref. × ${config.pessoas} pessoas = ${dosesTotais} doses totais${extraStr})`;
 }
 
 // ==========================================
@@ -281,7 +320,8 @@ async function gerarPlano(usarManuais = false, preencherAleatorio = true) {
     refeicoes_dia: config.refeicoesDia,
     escolhas: escolhas,
     preencher_aleatorio: preencherAleatorio,
-    escalar_selecionadas: !preencherAleatorio
+    escalar_selecionadas: !preencherAleatorio,
+    refeicoes_diferentes: config.refeicoesDiferentes
   };
 
   try {
@@ -408,6 +448,10 @@ function renderizarListaCompras(compras, plano) {
 
   dom.metaDias.textContent = plano.dias;
   dom.metaPessoas.textContent = plano.pessoas;
+  if (dom.metaRefDif) {
+    const totalDif = plano.total_refeicoes_diferentes || (plano.itens ? new Set(plano.itens.map(i => i.receita_id)).size : 0);
+    dom.metaRefDif.textContent = totalDif;
+  }
   dom.metaRefeicoes.textContent = plano.total_refeicoes_planeadas;
 
   dom.containerCompras.innerHTML = '';

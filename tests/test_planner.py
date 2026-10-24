@@ -124,6 +124,91 @@ class TestPlanner(unittest.TestCase):
         self.assertEqual(len(res_excesso), 2)
         self.assertEqual(sum(qtd for _, qtd in res_excesso), 2)
 
+    def test_gerar_plano_refeicoes_diferentes_7_dias_1_pessoa(self):
+        # O exemplo do utilizador: 2 refeições diferentes para 7 dias e 1 pessoa
+        # 7 dias * 2 refeicoes/dia = 14 refeições totais
+        # 2 refeições diferentes -> 7 refeições cada, 7 doses cada para 1 pessoa
+        plano = gerar_plano(
+            self.catalogo,
+            dias=7,
+            pessoas=1,
+            refeicoes_diferentes=2,
+            semente_aleatoria=42
+        )
+        self.assertEqual(plano.dias, 7)
+        self.assertEqual(plano.pessoas, 1)
+        self.assertEqual(plano.total_refeicoes_planeadas, 14)
+        self.assertEqual(plano.total_refeicoes_diferentes, 2)
+        self.assertEqual(len(plano.itens), 2)
+        for item in plano.itens:
+            self.assertEqual(item.refeicoes_cobertas, 7)
+            self.assertEqual(item.doses_necessarias, 7)
+
+    def test_gerar_plano_refeicoes_diferentes_7_dias_2_pessoas(self):
+        # 14 refeições para 2 pessoas com 2 receitas diferentes
+        # 7 refeições cada -> 14 doses necessárias para cada receita
+        plano = gerar_plano(
+            self.catalogo,
+            dias=7,
+            pessoas=2,
+            refeicoes_diferentes=2,
+            semente_aleatoria=123
+        )
+        self.assertEqual(plano.total_refeicoes_planeadas, 14)
+        self.assertEqual(plano.total_refeicoes_diferentes, 2)
+        self.assertEqual(len(plano.itens), 2)
+        for item in plano.itens:
+            self.assertEqual(item.refeicoes_cobertas, 7)
+            self.assertEqual(item.doses_necessarias, 14)
+
+    def test_gerar_plano_refeicoes_diferentes_3_receitas(self):
+        # 14 refeições divididas por 3 receitas diferentes (5 + 5 + 4)
+        plano = gerar_plano(
+            self.catalogo,
+            dias=7,
+            pessoas=2,
+            refeicoes_diferentes=3,
+            semente_aleatoria=7
+        )
+        self.assertEqual(plano.total_refeicoes_planeadas, 14)
+        self.assertEqual(plano.total_refeicoes_diferentes, 3)
+        self.assertEqual(len(plano.itens), 3)
+        refeicoes = sorted([item.refeicoes_cobertas for item in plano.itens])
+        self.assertEqual(refeicoes, [4, 5, 5])
+
+    def test_gerar_plano_refeicoes_diferentes_com_escolha_manual(self):
+        # 2 refeições diferentes no total, com 1 escolha manual
+        plano = gerar_plano(
+            self.catalogo,
+            dias=7,
+            pessoas=1,
+            escolhas_manuais=[("bacalhau_a_bras", 0)],
+            refeicoes_diferentes=2,
+            semente_aleatoria=9
+        )
+        self.assertEqual(plano.total_refeicoes_planeadas, 14)
+        self.assertEqual(plano.total_refeicoes_diferentes, 2)
+        ids = {item.receita_id for item in plano.itens}
+        self.assertIn("bacalhau_a_bras", ids)
+
+    def test_gerar_plano_refeicoes_diferentes_validacoes(self):
+        # refeicoes_diferentes <= 0
+        with self.assertRaises(ValueError):
+            gerar_plano(self.catalogo, dias=7, refeicoes_diferentes=0)
+
+        # refeicoes_diferentes > total_alvo (ex: 20 pratos para 14 refeições)
+        with self.assertRaises(ValueError):
+            gerar_plano(self.catalogo, dias=7, refeicoes_por_dia=2, refeicoes_diferentes=20)
+
+        # escolhas manuais em excesso em relação ao limite solicitado
+        with self.assertRaises(ValueError):
+            gerar_plano(
+                self.catalogo,
+                dias=7,
+                escolhas_manuais=[("bacalhau_a_bras", 1), ("frango_com_caril", 1), ("chili_com_carne", 1)],
+                refeicoes_diferentes=2
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

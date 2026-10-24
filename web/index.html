@@ -91,6 +91,24 @@
             </select>
           </div>
 
+          <div class="config-group">
+            <label class="config-label">Refeições Diferentes</label>
+            <select id="select-refeicoes-diferentes" class="select-field">
+              <option value="" selected>Automático (variadas)</option>
+              <option value="1">1 refeição diferente (1 prato)</option>
+              <option value="2">2 refeições diferentes (ex: meal prep)</option>
+              <option value="3">3 refeições diferentes</option>
+              <option value="4">4 refeições diferentes</option>
+              <option value="5">5 refeições diferentes</option>
+              <option value="personalizado">Personalizado...</option>
+            </select>
+            <div id="box-ref-dif-custom" class="input-inline-custom hidden">
+              <span>Total:</span>
+              <input type="number" id="input-refeicoes-diferentes" min="1" max="30" value="2" class="input-num">
+              <span>pratos</span>
+            </div>
+          </div>
+
         </div>
 
         <div class="summary-bar">
@@ -179,6 +197,9 @@
           </div>
           <div>
             <strong>Pessoas:</strong> <span id="meta-pessoas">-</span>
+          </div>
+          <div>
+            <strong>Refeições Diferentes:</strong> <span id="meta-ref-dif">-</span>
           </div>
           <div>
             <strong>Total de Refeições:</strong> <span id="meta-refeicoes">-</span>

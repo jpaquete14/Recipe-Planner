@@ -246,6 +246,10 @@ body {
   color: var(--text-muted);
 }
 
+#box-ref-dif-custom {
+  margin-top: 6px;
+}
+
 .input-num {
   width: 65px;
   padding: 6px 10px;

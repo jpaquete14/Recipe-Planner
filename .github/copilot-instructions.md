@@ -51,8 +51,9 @@ Secções recomendadas de supermercado entre parêntesis retos:
 2. **Pedir plano de refeições ou lista de compras**:
    - Exemplo: *"Faz-me um plano para 1 semana para 2 pessoas"* -> 1 semana = 14 refeições (7 dias x 2 refeições/dia).
    - Exemplo: *"Cria uma lista para 2 dias só com 1 refeição"* -> 2 dias = 4 refeições; a refeição selecionada cobrirá as 4 refeições (as doses aumentam proporcionalmente para o número de pessoas).
+   - Exemplo: *"Quero 2 refeições diferentes para 7 dias e 1 pessoa"* -> 14 refeições divididas por 2 receitas distintas (7 refeições/doses cada).
    - Pode executar diretamente o comando CLI através do PowerShell:
-     `python planner.py planear --dias D --pessoas P [--escolher "receita:N"] --lista-compras`
+     `python planner.py planear --dias D --pessoas P [--refeicoes-diferentes N] [--escolher "receita:N"] --lista-compras`
      ou apresentar a resposta formatada com o plano e a lista de compras categorizada por secções.
 3. **Substituir / trocar refeições**:
    - Exemplo: *"Troca o caril por salmão"* ->

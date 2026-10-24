@@ -137,7 +137,8 @@ def comando_planear(args) -> int:
             total_refeicoes_explicito=args.refeicoes,
             escolhas_manuais=escolhas,
             preencher_aleatorio=not args.sem_aleatorio,
-            refeicoes_por_lote_aleatorio=args.refeicoes_por_lote
+            refeicoes_por_lote_aleatorio=args.refeicoes_por_lote,
+            refeicoes_diferentes=args.refeicoes_diferentes
         )
     except Exception as e:
         print(f"❌ Erro ao gerar o plano: {e}")
@@ -150,7 +151,7 @@ def comando_planear(args) -> int:
     print(f"\n=======================================================")
     print(f"🗓️  Plano de Refeições Gerado com Sucesso!")
     print(f"=======================================================")
-    print(f"Duração: {plano.dias} dias | Pessoas: {plano.pessoas} | Refeições planeadas: {plano.total_refeicoes_planeadas}/{plano.total_refeicoes_alvo}")
+    print(f"Duração: {plano.dias} dias | Pessoas: {plano.pessoas} | Refeições diferentes: {plano.total_refeicoes_diferentes} | Refeições planeadas: {plano.total_refeicoes_planeadas}/{plano.total_refeicoes_alvo}")
     print(f"Plano guardado em: {ficheiro_plano}\n")
 
     print(f"Refeições selecionadas:")
@@ -263,10 +264,13 @@ Exemplos de utilização:
   # 4. Planear escolhendo algumas e preenchendo as restantes aleatoriamente
   python planner.py planear --dias 7 --pessoas 2 --escolher "bolonhesa:4" --escolher "caril:2" --lista-compras
 
-  # 5. Trocar uma refeição no plano atual
+  # 5. Planear para 1 semana para 1 pessoa com apenas 2 refeições diferentes
+  python planner.py planear --dias 7 --pessoas 1 --refeicoes-diferentes 2 --lista-compras
+
+  # 6. Trocar uma refeição no plano atual
   python planner.py trocar --remover "caril" --adicionar "salmao" --lista-compras
 
-  # 6. Ver ou exportar a lista de compras atual
+  # 7. Ver ou exportar a lista de compras atual
   python planner.py lista-compras --exportar lista_compras.md
 """
     )
@@ -293,6 +297,7 @@ Exemplos de utilização:
     p_planear.add_argument("-e", "--escolher", action="append", help="Escolher receita manualmente e número de refeições cobertas. Ex: -e 'bolonhesa:4'")
     p_planear.add_argument("--sem-aleatorio", action="store_true", help="Não preencher automaticamente as refeições restantes com receitas aleatórias")
     p_planear.add_argument("--refeicoes-por-lote", type=int, default=2, help="Quantas refeições cada receita aleatória deve cobrir (predefinição: 2)")
+    p_planear.add_argument("-rd", "--refeicoes-diferentes", "--receitas-diferentes", type=int, dest="refeicoes_diferentes", default=None, help="Número de receitas/refeições diferentes a incluir no plano (ex: 2)")
     p_planear.add_argument("--ficheiro-plano", default=str(FICHEIRO_PLANO_PADRAO), help="Ficheiro para guardar o estado do plano")
     p_planear.add_argument("--lista-compras", action="store_true", help="Apresentar de imediato a lista de compras gerada")
     p_planear.add_argument("-o", "--exportar", help="Caminho do ficheiro Markdown para exportar a lista de compras")

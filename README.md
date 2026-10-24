@@ -11,6 +11,7 @@ Sistema modular em **Python** (utilizando apenas a biblioteca padrão, sem depen
 - **Planeamento Flexível**:
   - Planear para 1 semana (assume 14 refeições: almoço e jantar para 7 dias) ou para qualquer número de dias/refeições.
   - Ajuste de doses para qualquer número de pessoas (predefinição: 2 pessoas).
+  - **Número específico de refeições diferentes**: Possibilidade de definir exatamente quantas receitas/pratos diferentes quer no plano (ex: apenas 2 refeições diferentes para 7 dias e 1 pessoa, ideal para *meal prep* / marmitas), distribuindo as doses e refeições uniformemente.
   - Seleção manual de refeições e preenchimento aleatório das restantes para variedade.
   - **Doses ajustadas por dias**: Se escolher apenas 1 refeição para cobrir 2 dias, as doses são automaticamente multiplicadas para garantir porções suficientes.
 - **Troca Fácil de Refeições**: Substitua facilmente uma refeição no plano ativo por outra (`trocar`).
@@ -39,6 +40,7 @@ python app.py
 ### O que pode fazer na Interface Web:
 - **🗓️ Separador "Planeador"**:
   - Escolha o número de dias (com botões rápidos para *1 Semana*, *2 Dias*, *3 Dias*, etc.) e pessoas.
+  - Selecione o número de **refeições diferentes** (ex.: 2 pratos diferentes para toda a semana ou variado/automático).
   - Clique em **"✨ Gerar Plano Completo"** para baralhar e preencher automaticamente a ementa.
   - Selecione receitas específicas e ajuste quantas refeições cobrem (com multiplicação automática de doses).
   - Troque qualquer refeição com o botão **"🔄 Trocar"** num simples menu visual.
@@ -112,24 +114,31 @@ Gera um plano com seleção aleatória das refeições disponíveis e apresenta 
 python planner.py planear --dias 7 --pessoas 2 --lista-compras
 ```
 
-### 4. Planear para 2 dias escolhendo apenas 1 refeição
+### 4. Planear com um número específico de refeições diferentes (ex: meal prep)
+Planear para 1 semana (14 refeições) para 1 pessoa com apenas 2 receitas diferentes:
+```bash
+python planner.py planear --dias 7 --pessoas 1 --refeicoes-diferentes 2 --lista-compras
+```
+*O sistema seleciona 2 pratos distintos, atribuindo 7 refeições (e 7 doses) a cada um e calculando os ingredientes exatos.*
+
+### 5. Planear para 2 dias escolhendo apenas 1 refeição
 Se planear 2 dias para 2 pessoas (4 refeições) e escolher apenas Bacalhau à Brás:
 ```bash
 python planner.py planear --dias 2 --pessoas 2 --escolher "bacalhau:4" --sem-aleatorio --lista-compras
 ```
 *O sistema calcula automaticamente 8 doses necessárias e duplica os ingredientes da receita base.*
 
-### 5. Escolher refeições específicas e preencher o resto aleatoriamente
+### 6. Escolher refeições específicas e preencher o resto aleatoriamente
 ```bash
 python planner.py planear --dias 7 --pessoas 2 --escolher "bolonhesa:4" --escolher "caril:2" --lista-compras
 ```
 
-### 6. Trocar uma refeição no plano ativo
+### 7. Trocar uma refeição no plano ativo
 ```bash
 python planner.py trocar --remover "caril" --adicionar "salmao" --lista-compras
 ```
 
-### 7. Consultar ou exportar a lista de compras
+### 8. Consultar ou exportar a lista de compras
 Apresentar a lista de compras do plano atual guardado:
 ```bash
 python planner.py lista-compras

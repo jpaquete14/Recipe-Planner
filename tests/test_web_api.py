@@ -275,6 +275,36 @@ class TestWebApi(unittest.TestCase):
             self.assertEqual(item["refeicoes_cobertas"], 7)
             self.assertEqual(item["doses_necessarias"], 14)
 
+    def test_post_planear_com_refeicoes_diferentes(self):
+        # 7 dias, 1 pessoa, 2 refeições diferentes -> 2 receitas, 7 refeições e 7 doses cada
+        payload = json.dumps({
+            "dias": 7,
+            "pessoas": 1,
+            "refeicoes_dia": 2,
+            "refeicoes_diferentes": 2
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            f"{self.base_url}/api/planear",
+            data=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        res = urllib.request.urlopen(req)
+        self.assertEqual(res.status, 200)
+        data = json.loads(res.read().decode("utf-8"))
+        self.assertTrue(data.get("sucesso"))
+
+        plano = data.get("plano")
+        self.assertEqual(plano["dias"], 7)
+        self.assertEqual(plano["pessoas"], 1)
+        self.assertEqual(plano["total_refeicoes_alvo"], 14)
+        self.assertEqual(len(plano["itens"]), 2)
+        total_refeicoes = sum(item["refeicoes_cobertas"] for item in plano["itens"])
+        self.assertEqual(total_refeicoes, 14)
+        for item in plano["itens"]:
+            self.assertEqual(item["refeicoes_cobertas"], 7)
+            self.assertEqual(item["doses_necessarias"], 7)
+
 
 if __name__ == "__main__":
     unittest.main()
