@@ -254,6 +254,9 @@ class RecipeHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", f"{tipo_mime}; charset=utf-8" if "text" in tipo_mime or "javascript" in tipo_mime or "json" in tipo_mime else tipo_mime)
             self.send_header("Content-Length", str(len(conteudo)))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
             self.end_headers()
             self.wfile.write(conteudo)
             return
